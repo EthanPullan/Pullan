@@ -12,7 +12,6 @@ function setup(cell, x, y) {
   const game = createGame(createRng(1));
   game.cell = { ...cell };
   game.enemies.length = 0;
-  game.spawner.population = {};
   Object.assign(game.player, { x, y, prevX: x, prevY: y, vx: 0, vy: 0, invuln: 1e9 });
   return game;
 }
@@ -84,4 +83,31 @@ test('crossing clears shots and pickups from the old arena', () => {
   hold(game, 1, 0, 2);
   assert.equal(game.pickups.activeCount, 0);
   assert.equal(game.playerShots.activeCount, 0);
+});
+
+test('a cleared arena stays clear while you stay, and refills when you come back', () => {
+  const game = setup({ col: 3, row: 3 }, 0, 0);
+  hold(game, 1, 0, 0.5); // a moment in the centre arena, then cross east
+  game.player.x = 800;
+  hold(game, 1, 0, 2);
+  assert.deepEqual(game.cell, { col: 4, row: 3 });
+  const full = game.enemies.length;
+  assert.ok(full > 0);
+  for (const e of game.enemies) e.alive = false;
+  hold(game, 0, 0, 30);
+  assert.equal(game.enemies.length, 0, 'nothing respawned in 30 s');
+  game.player.x = -800;
+  hold(game, -1, 0, 2); // back west, then east again
+  game.player.x = 800;
+  hold(game, 1, 0, 2);
+  assert.deepEqual(game.cell, { col: 4, row: 3 });
+  assert.equal(game.enemies.length, full);
+});
+
+test('dropped bubbles stay in the arena until collected', () => {
+  const game = setup({ col: 3, row: 3 }, 0, 0);
+  game.pickups.spawn();
+  Object.assign(game.pickups.items.find((p) => p.active), { x: 500, y: 0, delay: 0, age: 0 });
+  hold(game, 0, 0, 60);
+  assert.equal(game.pickups.activeCount, 1);
 });

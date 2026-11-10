@@ -4,26 +4,30 @@
 import { TUNING, PALETTE } from './data/tuning.js';
 import { CLASSES, CLASS_LIST, START_CLASS } from './data/classes.js';
 import { WEAPONS } from './data/weapons.js';
-import { ENEMIES, ROSTERS } from './data/enemies.js';
+import { ENEMIES, BOSSES, ROSTERS } from './data/enemies.js';
 import {
   createWorld, cellKey, difficultyOf, exitDirection, neighbour, entryPosition, rosterFor,
 } from './world.js';
 import { createPlayer, updatePlayer, applyRecoil, setPlayerClass } from './entities/player.js';
-import { createEnemy, updateEnemy, damageEnemy } from './entities/enemy.js';
+import { createEnemy, updateEnemy, damageEnemy, contactDamageOf } from './entities/enemy.js';
 import { createPool } from './systems/pool.js';
 import { updateTrigger, fireWeapon } from './systems/weapons.js';
 import { createProjectile, updateProjectiles } from './systems/projectiles.js';
 import { circlesOverlap, pushApart } from './systems/collision.js';
 import { takeDamage } from './systems/economy.js';
 import { createPickup, spawnBurst, updatePickups } from './systems/pickups.js';
-import { createSpawner, updateSpawner, spawnPoint } from './systems/spawning.js';
+import { populate, spawnPoint } from './systems/spawning.js';
 import { evaluateEvolution } from './systems/evolution.js';
 import { updateDrones } from './systems/drones.js';
 import { constrainToArena } from './systems/movement.js';
+import { updateAbility } from './systems/abilities.js';
 import { createPop, spawnPop, updatePops } from './render/effects.js';
 
 const combat = TUNING.combat;
 const pickupSettings = TUNING.pickups;
+// Enemy types that spawn and refill as a whole pack.
+const PACKS = Object.values(ENEMIES).filter((e) => e.groupSize).map((e) => e.id);
+const PACK_SPREAD = 80;
 
 export function createGame(rng) {
   const player = createPlayer(CLASSES[START_CLASS]);
@@ -39,6 +43,9 @@ export function createGame(rng) {
     player,
     playerTargets: [player], // what enemy shots can hit: the player and any drones
     kills: 0,
+    defeated: new Set(), // ids of bosses beaten
+    victoryPending: false, // true while the victory screen is up; the game pauses
+    victoryShown: false,
     path: {}, // class chosen at each tier, restored when re-evolving
     pendingChoice: null, // class ids to choose between; the game pauses until one is picked
     enemies: [],
@@ -46,14 +53,23 @@ export function createGame(rng) {
     enemyShots: createPool(combat.enemyShotPoolSize, createProjectile),
     pickups: createPool(pickupSettings.poolSize, createPickup),
     pops: createPool(combat.popPoolSize, createPop),
-    spawner: createSpawner(rosterFor(0, ROSTERS)),
   };
 
   // Event handlers are made once here, so the update loop allocates none.
-  game.spawnEnemy = (id) => {
+  // Adds `count` enemies of a type at one random point away from the player;
+  // packs are scattered a little around it.
+  game.spawnEnemy = (id, count = 1) => {
     const at = spawnPoint(player, TUNING.arena.radius, TUNING.spawning.edgeMargin,
       TUNING.spawning.minDistanceFromPlayer, rng);
-    game.enemies.push(createEnemy(ENEMIES[id], at.x, at.y, rng));
+    for (let i = 0; i < count; i++) {
+      const a = rng.next() * Math.PI * 2;
+      const r = count > 1 ? rng.next() * PACK_SPREAD : 0;
+      addEnemy(game, ENEMIES[id], at.x + Math.cos(a) * r, at.y + Math.sin(a) * r);
+    }
+  };
+  game.executeAttack = (e, attack) => executeAttack(game, e, attack);
+  game.onPhaseChange = (e) => {
+    spawnPop(game.pops, e.x, e.y, e.radius * 2, combat.deathPopSeconds * 2, PALETTE.danger);
   };
   game.playerShotEvents = {
     onHit: (enemy, shot) => {
@@ -82,14 +98,94 @@ export function createGame(rng) {
     player.bubbles += value;
   };
 
-  updateSpawner(game.spawner, game.enemies, game.spawnEnemy, TUNING.spawning.respawnSeconds, 0, true);
+  populate(rosterFor(0, ROSTERS), PACKS, game.spawnEnemy);
   return game;
 }
 
+// Heavy enemies (bosses, their parts, carriers) are not pushed by shots.
 function knockBack(target, shot) {
+  if (target.def.heavy) return;
   const speed = Math.hypot(shot.vx, shot.vy) || 1;
   target.vx += (shot.vx / speed) * shot.knockback;
   target.vy += (shot.vy / speed) * shot.knockback;
+}
+
+// Adds an enemy, and a boss's parts around it. Returns the enemy.
+function addEnemy(game, def, x, y) {
+  const e = createEnemy(def, x, y, game.rng);
+  game.enemies.push(e);
+  if (def.parts) {
+    const { enemy, count, distance } = def.parts;
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      const part = createEnemy(ENEMIES[enemy], x + Math.cos(a) * distance, y + Math.sin(a) * distance, game.rng);
+      part.parent = e;
+      part.partAngle = a;
+      game.enemies.push(part);
+    }
+  }
+  return e;
+}
+
+// Adds an enemy that `owner` summoned or dropped. These drop no bubbles,
+// so a carrier can't be farmed forever.
+function addChild(game, owner, def, x, y) {
+  const child = addEnemy(game, def, x, y);
+  child.owner = owner;
+  child.noDrops = true;
+  owner.children++;
+  return child;
+}
+
+function executeAttack(game, e, attack) {
+  const { player, rng } = game;
+  switch (attack.type) {
+    case 'shoot': {
+      const angle = attack.lockAim ? e.attack.aim : Math.atan2(player.y - e.y, player.x - e.x);
+      fireWeapon(game.enemyShots, WEAPONS[attack.weapon], e.x, e.y, angle, e.muzzle || e.radius, rng);
+      break;
+    }
+    case 'ring':
+      fireWeapon(game.enemyShots, WEAPONS[attack.weapon], e.x, e.y, e.ringAngle, e.radius, rng);
+      e.ringAngle += attack.spin;
+      break;
+    case 'dash':
+      e.dash = attack.duration;
+      e.dashDamage = attack.damage;
+      e.vx = Math.cos(e.attack.aim) * attack.speed;
+      e.vy = Math.sin(e.attack.aim) * attack.speed;
+      break;
+    case 'summon':
+      for (let i = 0; i < attack.count && e.children < attack.cap; i++) {
+        const a = rng.next() * Math.PI * 2;
+        const r = e.radius + 20;
+        addChild(game, e, ENEMIES[attack.enemy], e.x + Math.cos(a) * r, e.y + Math.sin(a) * r);
+      }
+      break;
+    case 'mine':
+      addChild(game, e, ENEMIES.mine, e.x, e.y);
+      break;
+    case 'blast':
+      if (Math.hypot(player.x - e.x, player.y - e.y) < attack.radius + player.radius) hurtPlayer(game, attack.damage);
+      spawnPop(game.pops, e.x, e.y, attack.radius * 0.6, combat.deathPopSeconds, PALETTE.danger);
+      e.alive = false;
+      e.expired = true;
+      break;
+    default:
+      break;
+  }
+}
+
+// Spawns any enemy or boss `distance` units in front of the player.
+// For the debug spawn menu.
+export function debugSpawn(game, id, distance = 350) {
+  const { player } = game;
+  addEnemy(game, ENEMIES[id], player.x + Math.cos(player.aim) * distance, player.y + Math.sin(player.aim) * distance);
+}
+
+// Dismisses the victory screen; play continues.
+export function dismissVictory(game) {
+  game.victoryPending = false;
 }
 
 function hitEnemy(game, enemy, damage) {
@@ -98,10 +194,27 @@ function hitEnemy(game, enemy, damage) {
 
 function killEnemy(game, enemy) {
   game.kills++;
-  spawnBurst(game.pickups, enemy.x, enemy.y, enemy.def.drops,
-    pickupSettings.dropSpeedMin, pickupSettings.dropSpeedMax, 0, game.rng);
+  if (!enemy.noDrops) {
+    spawnBurst(game.pickups, enemy.x, enemy.y, enemy.def.drops,
+      pickupSettings.dropSpeedMin, pickupSettings.dropSpeedMax, 0, game.rng);
+  }
+  if (enemy.def.boss) defeatBoss(game, enemy);
   spawnPop(game.pops, enemy.x, enemy.y, enemy.radius * combat.deathPopScale,
     combat.deathPopSeconds, PALETTE.enemy);
+}
+
+function defeatBoss(game, boss) {
+  game.defeated.add(boss.def.id);
+  for (const part of game.enemies) {
+    if (part.parent === boss && part.alive) {
+      part.alive = false;
+      killEnemy(game, part);
+    }
+  }
+  if (game.defeated.size === BOSSES.length && !game.victoryShown) {
+    game.victoryPending = true;
+    game.victoryShown = true;
+  }
 }
 
 export function hurtPlayer(game, damage) {
@@ -184,8 +297,11 @@ function enterArena(game, cell, entry, kind) {
     d.y = d.prevY = player.y;
   }
 
-  game.spawner = createSpawner(rosterFor(difficultyOf(game.world, cell), ROSTERS));
-  updateSpawner(game.spawner, game.enemies, game.spawnEnemy, TUNING.spawning.respawnSeconds, 0, true);
+  // A boss arena holds only its boss until the boss is beaten.
+  const boss = BOSSES.find((b) => b.cell.col === cell.col && b.cell.row === cell.row && !game.defeated.has(b.id));
+  const roster = boss ? {} : rosterFor(difficultyOf(game.world, cell), ROSTERS);
+  populate(roster, PACKS, game.spawnEnemy);
+  if (boss) addEnemy(game, boss, 0, 0);
 }
 
 // The game pauses during the fade; the arena swaps at its midpoint.
@@ -212,21 +328,78 @@ export function fadeAmount(game) {
 function resolveContacts(game) {
   const { player } = game;
   for (const e of game.enemies) {
-    if (!e.alive) continue;
+    if (!e.alive || e.def.noContact) continue;
     if (!circlesOverlap(player.x, player.y, player.radius, e.x, e.y, e.radius)) continue;
+    const damage = contactDamageOf(e);
+    if (e.def.heavy) {
+      // Bosses and big enemies don't budge; the player is pushed off.
+      const n = pushApart(e, player);
+      if (n && damage > 0) {
+        player.vx += n.x * combat.contactKnockback;
+        player.vy += n.y * combat.contactKnockback;
+        hurtPlayer(game, damage);
+      }
+      continue;
+    }
     const n = pushApart(player, e);
-    if (!n || e.def.contactDamage <= 0) continue;
+    if (!n || damage <= 0) continue;
+    e.dash = 0;
     e.vx = n.x * combat.contactKnockback;
     e.vy = n.y * combat.contactKnockback;
     e.stun = combat.contactStunSeconds;
-    hurtPlayer(game, e.def.contactDamage);
+    hurtPlayer(game, damage);
   }
 }
 
 function removeDead(enemies) {
   let kept = 0;
-  for (const e of enemies) if (e.alive) enemies[kept++] = e;
+  for (const e of enemies) {
+    if (e.alive) enemies[kept++] = e;
+    else if (e.owner) e.owner.children--;
+  }
   enemies.length = kept;
+}
+
+function useAbility(game, ability, controls) {
+  const { player } = game;
+  switch (ability.type) {
+    case 'fire': {
+      const weapon = WEAPONS[ability.weapon];
+      fireWeapon(game.playerShots, weapon, player.x, player.y, player.aim, player.muzzle, game.rng);
+      applyRecoil(player, weapon.recoil);
+      break;
+    }
+    case 'dash': {
+      // Dash the way you're steering, or toward the cursor if not moving.
+      const len = Math.hypot(controls.moveX, controls.moveY);
+      const dx = len ? controls.moveX / len : Math.cos(player.aim);
+      const dy = len ? controls.moveY / len : Math.sin(player.aim);
+      player.vx += dx * ability.impulse;
+      player.vy += dy * ability.impulse;
+      player.invuln = Math.max(player.invuln, ability.invulnSeconds);
+      spawnPop(game.pops, player.x, player.y, player.radius, combat.shotPopSeconds * 2, PALETTE.player);
+      break;
+    }
+    case 'shockwave':
+      for (const e of game.enemies) {
+        const d = Math.hypot(e.x - player.x, e.y - player.y);
+        if (!e.alive || d > ability.radius + e.radius) continue;
+        if (!e.def.heavy && d > 0) {
+          e.vx += ((e.x - player.x) / d) * ability.knockback;
+          e.vy += ((e.y - player.y) / d) * ability.knockback;
+          e.stun = combat.contactStunSeconds;
+        }
+        hitEnemy(game, e, ability.damage);
+      }
+      spawnPop(game.pops, player.x, player.y, ability.radius * 0.6, combat.deathPopSeconds * 1.5, PALETTE.player);
+      break;
+    case 'shield':
+      player.shield = ability.seconds;
+      player.invuln = Math.max(player.invuln, ability.seconds);
+      break;
+    default:
+      break;
+  }
 }
 
 function changeClass(game, classId) {
@@ -260,11 +433,12 @@ export function grantBubbles(game, amount) {
   game.player.bubbles = Math.max(0, game.player.bubbles + amount);
 }
 
-// `controls`: moveX, moveY (-1..1), aimX, aimY (world units), fire (bool).
-// Does nothing while a class choice is pending, and only runs the fade
-// while moving between arenas.
+// `controls`: moveX, moveY (-1..1), aimX, aimY (world units), fire and
+// ability (bools).
+// Does nothing while a class choice or the victory screen is up, and only
+// runs the fade while moving between arenas.
 export function updateGame(game, controls, dt) {
-  if (game.pendingChoice) return;
+  if (game.pendingChoice || game.victoryPending) return;
   const { player } = game;
   const arenaRadius = TUNING.arena.radius;
   game.time += dt;
@@ -282,9 +456,11 @@ export function updateGame(game, controls, dt) {
     applyRecoil(player, weapon.recoil);
   }
 
+  const cls = CLASSES[player.classId];
+  if (updateAbility(player.abilityState, cls.ability, controls.ability, dt)) useAbility(game, cls.ability, controls);
+
   for (const e of game.enemies) updateEnemy(e, game, dt);
   resolveContacts(game);
-  const cls = CLASSES[player.classId];
   if (cls.drones) updateDrones(player, cls.drones, game.enemies, game.onDroneHit, dt);
 
   updateProjectiles(game.playerShots, game.enemies, arenaRadius, game.playerShotEvents, dt);
@@ -292,7 +468,6 @@ export function updateGame(game, controls, dt) {
   removeDead(game.enemies);
 
   updatePickups(game.pickups, player, player.pickupRadius, pickupSettings, arenaRadius, game.onCollect, dt);
-  updateSpawner(game.spawner, game.enemies, game.spawnEnemy, TUNING.spawning.respawnSeconds, dt);
   updatePops(game.pops, dt);
   checkEvolution(game);
 }

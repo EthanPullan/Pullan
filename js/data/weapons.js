@@ -45,6 +45,32 @@ export const WEAPONS = {
   },
   halo: { fireRate: 3, damage: 2, speed: 520, spread: 0.03, count: 1, lifetime: 1.1, radius: 5, recoil: 6, knockback: 40 },
 
-  // Enemies
-  strafer: { fireRate: 0.8, damage: 1, speed: 300, spread: 0.15, count: 1, lifetime: 2, radius: 6, recoil: 0, knockback: 60 },
+  // Right-click abilities (see `ability` in classes.js)
+  burst: {
+    fireRate: 1, damage: 2, speed: 500, spread: (Math.PI * 2 * 15) / 16, count: 16, lifetime: 0.8, radius: 5,
+    recoil: 0, knockback: 60,
+  },
+  lance: {
+    fireRate: 1, damage: 8, speed: 1200, spread: 0, count: 1, lifetime: 1, radius: 8, recoil: 120, knockback: 200,
+    pierce: 20,
+  },
+  swarmBurst: {
+    fireRate: 1, damage: 1, speed: 280, spread: (Math.PI * 2 * 11) / 12, count: 12, lifetime: 3, radius: 5,
+    recoil: 0, knockback: 20, turnRate: 4.5, homingRange: 500,
+  },
+
+  // Enemies. They fire through attacks in enemies.js, so fireRate is unused.
+  strafer: { fireRate: 1, damage: 1, speed: 300, spread: 0.15, count: 1, lifetime: 2, radius: 6, recoil: 0, knockback: 60 },
+  sniper: { fireRate: 1, damage: 3, speed: 900, spread: 0, count: 1, lifetime: 1.2, radius: 5, recoil: 0, knockback: 150 },
+  bloomSpore: {
+    fireRate: 1, damage: 1, speed: 220, spread: (Math.PI * 2 * 15) / 16, count: 16, lifetime: 4, radius: 7,
+    recoil: 0, knockback: 60,
+  },
+  bloomSporeDense: {
+    fireRate: 1, damage: 1, speed: 240, spread: (Math.PI * 2 * 19) / 20, count: 20, lifetime: 4, radius: 7,
+    recoil: 0, knockback: 60,
+  },
+  wardenBolt: {
+    fireRate: 1, damage: 2, speed: 520, spread: 0.3, count: 3, lifetime: 2, radius: 7, recoil: 0, knockback: 100,
+  },
 };

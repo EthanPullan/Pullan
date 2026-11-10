@@ -101,3 +101,57 @@ canvas {
   font-size: 13px;
   opacity: 0.55;
 }
+
+.choice-button {
+  margin-top: 4px;
+  padding: 10px 22px;
+  border: 1px solid #5ef2e0;
+  border-radius: 10px;
+  background: rgba(10, 34, 54, 0.85);
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.choice-button:hover,
+.choice-button:focus-visible {
+  box-shadow: 0 0 24px rgba(94, 242, 224, 0.35);
+  outline: none;
+}
+
+/* Debug spawn menu */
+.spawn-menu {
+  position: fixed;
+  top: 210px;
+  left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  font: 13px ui-monospace, Menlo, Consolas, monospace;
+  color: #d8f6ff;
+}
+
+.spawn-menu.hidden {
+  display: none;
+}
+
+.spawn-menu p {
+  margin: 0 0 4px;
+}
+
+.spawn-menu button {
+  padding: 3px 8px;
+  border: 1px solid rgba(216, 246, 255, 0.3);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.spawn-menu button:hover {
+  background: rgba(216, 246, 255, 0.12);
+}

@@ -3,6 +3,11 @@
 // `hull` turns with the direction of travel; `guns` turns toward the cursor.
 // `stats`: topSpeed (units/s), accel (units/s² from rest), pickupRadius
 // (pickups closer than this are pulled in). `weapon` is an id in weapons.js.
+// Tier-3 classes have an `ability` on the right mouse button:
+//   fire       fires `weapon` once, aimed at the cursor
+//   dash       a burst of speed (`impulse` units/s) with brief immunity
+//   shockwave  hurts and throws back every enemy within `radius`
+//   shield     immune to damage for `seconds`
 
 import { c, ring, barrel } from './shapes.js';
 
@@ -32,6 +37,7 @@ export const CLASS_LIST = [
     blurb: 'Sprays a wide fan of shots.',
     stats: { topSpeed: 255, accel: 1150, pickupRadius: 140 },
     weapon: 'spray',
+    ability: { name: 'Burst', type: 'fire', weapon: 'burst', cooldown: 6 },
     hull: [c(2, 0, 16), c(-16, 0, 11), c(-30, 0, 7), c(6, -19, 8), c(6, 19, 8), c(-8, -26, 5), c(-8, 26, 5)],
     guns: [
       c(0, 0, 7),
@@ -45,6 +51,7 @@ export const CLASS_LIST = [
     blurb: 'A tight, relentless stream.',
     stats: { topSpeed: 270, accel: 1200, pickupRadius: 140 },
     weapon: 'stream',
+    ability: { name: 'Dash', type: 'dash', impulse: 700, invulnSeconds: 0.35, cooldown: 3 },
     hull: [c(6, 0, 12), c(-10, 0, 11), c(-24, 0, 8), c(-36, 0, 5), c(-45, 0, 3), c(10, -13, 5), c(10, 13, 5)],
     guns: [c(0, 0, 6), ...barrel(0, 8, 34, 4, 2.5)],
   },
@@ -63,6 +70,7 @@ export const CLASS_LIST = [
     blurb: 'Shells that burst on impact.',
     stats: { topSpeed: 175, accel: 600, pickupRadius: 150 },
     weapon: 'shell',
+    ability: { name: 'Shockwave', type: 'shockwave', radius: 200, damage: 4, knockback: 400, cooldown: 8 },
     hull: [c(0, 0, 28), ...ring(10, 30, 7)],
     guns: [c(0, 0, 12), ...barrel(0, 14, 16, 7, 6), c(36, 0, 10)],
   },
@@ -71,6 +79,7 @@ export const CLASS_LIST = [
     blurb: 'Shots that pierce straight through.',
     stats: { topSpeed: 180, accel: 650, pickupRadius: 150 },
     weapon: 'harpoon',
+    ability: { name: 'Lance', type: 'fire', weapon: 'lance', cooldown: 6 },
     hull: [c(0, 0, 25), ...ring(6, 26, 8, Math.PI / 6), c(-34, 0, 9)],
     guns: [c(0, 0, 10), ...barrel(0, 12, 42, 6, 3.5)],
   },
@@ -89,6 +98,7 @@ export const CLASS_LIST = [
     blurb: 'Floods the water with weak seekers.',
     stats: { topSpeed: 215, accel: 850, pickupRadius: 150 },
     weapon: 'swarm',
+    ability: { name: 'Swarm burst', type: 'fire', weapon: 'swarmBurst', cooldown: 7 },
     hull: [c(0, 0, 19), ...ring(7, 25, 7.5, Math.PI / 7)],
     guns: [c(0, 0, 8), ...barrel(0, 10, 10, 6, 5), ...barrel(-0.5, 10, 8, 4, 3.5), ...barrel(0.5, 10, 8, 4, 3.5)],
   },
@@ -97,6 +107,7 @@ export const CLASS_LIST = [
     blurb: 'Circled by orbiting drones.',
     stats: { topSpeed: 220, accel: 900, pickupRadius: 150 },
     weapon: 'halo',
+    ability: { name: 'Shield', type: 'shield', seconds: 2.5, cooldown: 10 },
     // Drones orbit the tank, hurt enemies they touch and absorb enemy shots.
     drones: { count: 4, orbitRadius: 58, orbitSpeed: 2.4, radius: 7, damage: 1, hitCooldown: 0.4 },
     hull: [c(0, 0, 20), ...ring(12, 34, 4)],

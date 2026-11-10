@@ -4,7 +4,10 @@ import { createFixedStep, startLoop } from './loop.js';
 import { createInput } from './input.js';
 import { createRng, seedFromQuery } from './rng.js';
 import { createCamera, updateCamera, screenToWorld } from './camera.js';
-import { createGame, updateGame, chooseClass, grantBubbles, fadeAmount } from './game.js';
+import {
+  createGame, updateGame, chooseClass, grantBubbles, fadeAmount, debugSpawn, dismissVictory,
+} from './game.js';
+import { ENEMIES } from './data/enemies.js';
 import { difficultyOf } from './world.js';
 import { clearSpriteCache } from './render/tank.js';
 import { createSpecks } from './render/background.js';
@@ -12,6 +15,8 @@ import { renderScene } from './render/scene.js';
 import { drawHud } from './ui/hud.js';
 import { createChoiceOverlay } from './ui/choice.js';
 import { drawMinimap } from './ui/minimap.js';
+import { createVictoryOverlay } from './ui/victory.js';
+import { createSpawnMenu } from './ui/spawnmenu.js';
 import { createDebug, tickFps, drawDebugText } from './ui/debug.js';
 
 const canvas = document.getElementById('game');
@@ -44,9 +49,9 @@ const stepper = createFixedStep(1 / TUNING.sim.stepHz, TUNING.sim.maxFrameSecond
 const dt = 1 / TUNING.sim.stepHz;
 
 // `?test` exposes the game state to automated browser checks.
-if (query.has('test')) window.__test = { game, camera, view, chooseClass };
+if (query.has('test')) window.__test = { game, camera, view, chooseClass, debugSpawn };
 
-const controls = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, fire: false };
+const controls = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, fire: false, ability: false };
 let lastAlpha = 0;
 let cameraArena = game.arenaId;
 
@@ -61,6 +66,7 @@ function step() {
   controls.aimX = aim.x;
   controls.aimY = aim.y;
   controls.fire = input.mouse.left;
+  controls.ability = input.mouse.right;
   updateGame(game, controls, dt);
   // On arrival in a new arena the camera jumps with the player.
   if (game.arenaId !== cameraArena) {
@@ -79,6 +85,27 @@ const choice = createChoiceOverlay((classId) => {
   chooseClass(game, classId);
   choice.hide();
 });
+
+const victory = createVictoryOverlay(() => {
+  dismissVictory(game);
+  victory.hide();
+});
+
+// Boss parts only make sense attached to a boss, so they aren't listed.
+const spawnMenu = createSpawnMenu(
+  Object.values(ENEMIES).filter((def) => def.behaviour !== 'part'),
+  (id) => debugSpawn(game, id),
+);
+
+function handleVictory() {
+  const enter = input.consume('Enter');
+  if (!game.victoryPending) return;
+  if (!victory.visible) victory.show(game.kills);
+  else if (enter) {
+    dismissVictory(game);
+    victory.hide();
+  }
+}
 
 // Shows the choice cards when the game asks for one, and handles the
 // 1/2/3 keys. Digit presses are always consumed so a stale press made
@@ -127,7 +154,8 @@ function render(alpha) {
       `         pickups ${game.pickups.activeCount}/${game.pickups.capacity}`
         + `, pops ${game.pops.activeCount}/${game.pops.capacity}`,
       `class    ${player.classId}  path ${JSON.stringify(game.path)}`,
-      `bubbles  ${player.bubbles}  = / - to add or remove 10`,
+      `bubbles  ${player.bubbles}  = / - to add or remove 10, B spawn menu`,
+      `bosses   beaten ${[...game.defeated].join(', ') || 'none'}`,
       `speed    ${Math.hypot(player.vx, player.vy).toFixed(0)}`,
       `position ${player.x.toFixed(0)}, ${player.y.toFixed(0)}`,
     ]);
@@ -139,12 +167,16 @@ startLoop((elapsed) => {
   if (input.consume('F3')) debug.enabled = !debug.enabled;
   if (input.consume('Equal') && debug.enabled) grantBubbles(game, 10);
   if (input.consume('Minus') && debug.enabled) grantBubbles(game, -10);
+  if (input.consume('KeyB') && debug.enabled) spawnMenu.toggle();
+  if (!debug.enabled) spawnMenu.hide();
   handleChoice();
+  handleVictory();
 
-  // The simulation is paused while a choice is on screen.
-  if (!game.pendingChoice) {
+  // The simulation is paused while a choice or the victory screen is up.
+  const paused = () => game.pendingChoice || game.victoryPending;
+  if (!paused()) {
     const { steps, alpha } = stepper.advance(elapsed);
-    for (let i = 0; i < steps && !game.pendingChoice; i++) step();
+    for (let i = 0; i < steps && !paused(); i++) step();
     lastAlpha = alpha;
   }
   render(lastAlpha);

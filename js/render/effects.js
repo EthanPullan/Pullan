@@ -60,7 +60,7 @@ export function drawProjectiles(ctx, pool, alpha, color) {
   ctx.fill();
 }
 
-// Golden bubbles that fade out over the end of their lifetime.
+// Golden bubbles.
 export function drawPickups(ctx, pool, alpha, color, settings) {
   const r = settings.radius;
   ctx.lineWidth = 1.2;
@@ -68,16 +68,15 @@ export function drawPickups(ctx, pool, alpha, color, settings) {
     if (!p.active) continue;
     const x = p.prevX + (p.x - p.prevX) * alpha;
     const y = p.prevY + (p.y - p.prevY) * alpha;
-    const fade = Math.min(1, (settings.lifetime - p.age) / settings.fadeSeconds);
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = rgba(color, 0.25 * fade);
+    ctx.fillStyle = rgba(color, 0.25);
     ctx.fill();
-    ctx.strokeStyle = rgba(color, 0.95 * fade);
+    ctx.strokeStyle = rgba(color, 0.95);
     ctx.stroke();
     ctx.beginPath();
     ctx.arc(x - r * 0.35, y - r * 0.35, r * 0.25, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * fade})`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.fill();
   }
 }

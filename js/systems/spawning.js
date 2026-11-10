@@ -1,11 +1,12 @@
-// Keeps the arena stocked: whenever fewer of an enemy type are alive than
-// the population asks for, one is added after `respawnSeconds`.
-
-export function createSpawner(population) {
-  return {
-    population,
-    timers: Object.fromEntries(Object.keys(population).map((id) => [id, 0])),
-  };
+// Fills an arena from its roster when you enter it. Arenas are not topped
+// up while you stay, so a cleared arena stays clear until you come back.
+// `spawn(typeId, count)` is called once per enemy, or once per pack (with
+// the pack's size) for types listed in `packs`.
+export function populate(roster, packs, spawn) {
+  for (const [id, count] of Object.entries(roster)) {
+    if (packs.includes(id)) spawn(id, count);
+    else for (let i = 0; i < count; i++) spawn(id, 1);
+  }
 }
 
 // A random point inside the arena, at least `minDistance` from the player.
@@ -21,26 +22,4 @@ export function spawnPoint(player, arenaRadius, edgeMargin, minDistance, rng) {
   }
   const d = Math.hypot(player.x, player.y) || 1;
   return { x: (-player.x / d) * maxR, y: (-player.y / d) * maxR };
-}
-
-// Calls `spawn(typeId)` for each enemy due. `immediate` fills every gap at
-// once, used when the arena is first populated.
-export function updateSpawner(spawner, enemies, spawn, respawnSeconds, dt, immediate = false) {
-  for (const [id, wanted] of Object.entries(spawner.population)) {
-    let alive = 0;
-    for (const e of enemies) if (e.alive && e.def.id === id) alive++;
-    if (alive >= wanted) {
-      spawner.timers[id] = respawnSeconds;
-      continue;
-    }
-    if (immediate) {
-      for (let i = alive; i < wanted; i++) spawn(id);
-      continue;
-    }
-    spawner.timers[id] -= dt;
-    if (spawner.timers[id] <= 0) {
-      spawn(id);
-      spawner.timers[id] = respawnSeconds;
-    }
-  }
 }

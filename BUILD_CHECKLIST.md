@@ -244,15 +244,15 @@ six end classes feel distinct.
 
 ## Phase 7: Full roster, abilities and bosses
 
-- [ ] Swarmling, Sniper, Charger, Carrier and Mine-layer.
-- [ ] Every attack that can hurt the player has a visible warning first.
-- [ ] One secondary ability per tier-3 class on the right button, with a
+- [x] Swarmling, Sniper, Charger, Carrier and Mine-layer.
+- [x] Every attack that can hurt the player has a visible warning first.
+- [x] One secondary ability per tier-3 class on the right button, with a
       cooldown shown on screen.
-- [ ] Two bosses in outer-ring arenas, each multi-part with two attack phases
+- [x] Two bosses in outer-ring arenas, each multi-part with two attack phases
       and a large bubble payout. Boss arenas appear on the minimap once seen.
-- [ ] Defeating both shows a victory screen, then play continues.
-- [ ] Debug spawn menu for any enemy or boss.
-- [ ] Tests: ability cooldowns; boss phase change at the configured health.
+- [x] Defeating both shows a victory screen, then play continues.
+- [x] Debug spawn menu for any enemy or boss.
+- [x] Tests: ability cooldowns; boss phase change at the configured health.
 
 **Gate (human):** the owner fights each enemy alone, then both bosses.
 
@@ -510,4 +510,73 @@ Additions not in the checklist:
 
 Not verified: whether exploring feels good, whether difficulty rises at the
 right pace, and whether the solid wall reads clearly enough.
+
+### Session 5: Phase 7, and two changes requested by the owner
+
+**Owner's changes, made during this phase:**
+- Bubbles no longer expire. They stay in an arena until collected or until
+  you leave it. (`lifetime` and `fadeSeconds` are gone from pickups.)
+- Arenas are filled once, from their roster, each time you enter, and are
+  not topped up while you stay. A cleared arena stays clear until you come
+  back. (`respawnSeconds` is gone; `systems/spawning.js` is now a one-time
+  `populate`.) Enemies that other enemies summon or drop during a fight
+  (carrier swarmlings, mines, the Bloom's swarmlings) still appear, but drop
+  no bubbles.
+
+**Phase 7.** Built as listed. Verified in headless Chromium:
+- Each new enemy was spawned alone and caught mid wind-up: the strafer's
+  shot, the sniper's aim line, the charger's dash lane, the carrier's
+  summon, the mine-layer's drop and the mine's blast radius all showed
+  before landing. The carrier summoned, the mine-layer dropped a mine and
+  the mine blasted and disappeared.
+- A scripted Harpoon fought both bosses to the end: the Bloom fired spore
+  rings and summoned swarmlings in phase 2; the Warden fired locked volleys
+  and dashed in phase 2. The victory screen appeared after the second, and
+  Enter dismissed it and resumed play.
+- The spawn menu (F3, then B) lists every enemy and boss and spawns them;
+  clicking it fires no shots.
+- A difficulty-3 arena with all 25 roster enemies ran for 20 s with no
+  errors at about 60 frames per second (headless, software rendering).
+`tests/phase7.test.js` covers boss arenas, defeats and payouts, victory,
+the phase change at half health, summon caps, mines, charger dashes, and
+the Shockwave, Shield, Burst and Dash abilities.
+
+How attacks work: every enemy attack is data in `js/data/enemies.js`
+(shoot, ring, dash, summon, mine, blast), each with a wind-up and an
+interval, run by `js/systems/attacks.js`. The warning is drawn during every
+wind-up: a tightening danger-coloured ring, plus the aim line for locked
+shots and dashes, and the blast radius for mines. The strafer moved onto
+this system, so it now winds up for 0.4 s before each shot. Contact damage
+from chasers and swarmlings has no separate warning; their approach is the
+warning.
+
+Abilities (right mouse button, tier 3 only): Spindrift Burst (16-shot
+ring, 6 s), Needlejet Dash (3 s), Depthcharge Shockwave (radius 200, 8 s),
+Harpoon Lance (huge piercing shot, 6 s), Shoal Swarm burst (12 seekers,
+7 s), Halo Shield (2.5 s immunity, 10 s). A bar in the HUD shows the
+cooldown.
+
+Bosses: The Bloom in corner 0,0 (160 health, 6 pods, spore rings; at half
+health denser rotating rings and swarmling summons) and The Warden in corner
+6,6 (200 health, 3 guns, locked three-shot volleys; at half health dashes
+as well). Each pays 40 or 50 bubbles plus 3 per part. A boss arena holds
+only its boss until it is beaten, then becomes a normal difficulty-3 arena.
+A health bar with the phase mark shows at the top of the screen.
+
+Bugs found and fixed while testing:
+- Shots knocked bosses backward, so the Warden was pinned about 1,000 units
+  away instead of circling at 420. Heavy enemies now ignore knockback.
+- The sniper kept moving during its wind-up, so its shot did not follow the
+  line it showed. It now stands still while aiming.
+- Mines had the usual random 0.5 to 2 s attack delay on top of arming.
+
+Additions not in the checklist:
+- Boss health bar; minimap marks boss arenas once visited (red dot, hollow
+  ring once beaten).
+- Mines turn from pink to red when armed.
+
+Not verified: whether fights are fair and fun, boss difficulty and length
+(about 30 s each for a scripted Harpoon that could not be hurt), and the
+numbers for all new enemies and abilities. Under steady fire a boss flashes
+white much of the time; fast weapons may keep it white constantly.
 

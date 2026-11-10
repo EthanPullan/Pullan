@@ -8,6 +8,7 @@ import { drawPops, drawProjectiles, drawPickups } from './effects.js';
 import { drawCollisionCircle } from '../ui/debug.js';
 import { rgba } from './color.js';
 import { solidSides } from '../world.js';
+import { windupProgress } from '../systems/attacks.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -15,6 +16,62 @@ function easeOutBack(t) {
   const c1 = 1.70158;
   const u = t - 1;
   return 1 + (c1 + 1) * u * u * u + c1 * u * u;
+}
+
+// Every attack winds up before it lands. While it does, a danger-coloured
+// ring tightens around the enemy; locked shots and dashes also show their
+// line, and blasts show their radius.
+function drawWarnings(ctx, game, alpha) {
+  ctx.save();
+  for (const e of game.enemies) {
+    const attack = e.attack.active;
+    if (!attack || !e.alive) continue;
+    const p = windupProgress(e.attack);
+    const x = lerp(e.prevX, e.x, alpha);
+    const y = lerp(e.prevY, e.y, alpha);
+    ctx.strokeStyle = rgba(PALETTE.danger, 0.3 + 0.6 * p);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, e.radius + 6 + 14 * (1 - p), 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (attack.lockAim || attack.type === 'dash') {
+      const length = attack.line || attack.speed * attack.duration;
+      const cos = Math.cos(e.attack.aim);
+      const sin = Math.sin(e.attack.aim);
+      ctx.strokeStyle = rgba(PALETTE.danger, 0.15 + 0.5 * p);
+      ctx.lineWidth = attack.type === 'dash' ? e.radius * 2 * (0.3 + 0.4 * p) : 1.5 + 2 * p;
+      ctx.beginPath();
+      ctx.moveTo(x + cos * e.radius, y + sin * e.radius);
+      ctx.lineTo(x + cos * (e.radius + length), y + sin * (e.radius + length));
+      ctx.stroke();
+    }
+    if (attack.type === 'blast') {
+      ctx.fillStyle = rgba(PALETTE.danger, 0.08 + 0.17 * p);
+      ctx.beginPath();
+      ctx.arc(x, y, attack.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function enemyColor(e) {
+  if (e.flash > 0) return '#ffffff';
+  // Mines turn from enemy pink to danger red once armed.
+  if (e.def.armSeconds !== undefined && e.age >= e.def.armSeconds) return PALETTE.danger;
+  return PALETTE.enemy;
+}
+
+function drawShield(ctx, player, x, y, time) {
+  if (player.shield <= 0) return;
+  ctx.save();
+  ctx.strokeStyle = rgba(PALETTE.player, 0.5 + 0.3 * Math.sin(time * 12));
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, y, player.radius + 14, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawDrones(ctx, player, alpha) {
@@ -57,17 +114,19 @@ export function renderScene(ctx, game, cam, view, specks, alpha, showDebug) {
 
   for (const e of game.enemies) {
     drawTank(
-      ctx, e.def, e.flash > 0 ? '#ffffff' : PALETTE.enemy,
+      ctx, e.def, enemyColor(e),
       lerp(e.prevX, e.x, alpha), lerp(e.prevY, e.y, alpha),
       lerpAngle(e.prevHeading, e.heading, alpha), lerpAngle(e.prevAim, e.aim, alpha), s,
     );
   }
 
+  drawWarnings(ctx, game, alpha);
   drawProjectiles(ctx, game.enemyShots, alpha, PALETTE.danger);
   drawProjectiles(ctx, game.playerShots, alpha, PALETTE.player);
   drawPops(ctx, game.pops);
 
   drawDrones(ctx, player, alpha);
+  drawShield(ctx, player, px, py, game.time);
 
   // Blink while recovering from a hit.
   const visible = player.blink <= 0 || Math.floor(player.blink * 15) % 2 === 0;

@@ -34,8 +34,6 @@ export const TUNING = {
   pickups: {
     poolSize: 512,
     radius: 5,
-    lifetime: 12,
-    fadeSeconds: 3, // fades out over the end of its lifetime
     drag: 3,
     dropSpeedMin: 60, // scatter speed when an enemy bursts
     dropSpeedMax: 160,
@@ -46,7 +44,6 @@ export const TUNING = {
     magnetMaxSpeed: 520,
   },
   spawning: {
-    respawnSeconds: 4, // a missing enemy is replaced after this long
     minDistanceFromPlayer: 450,
     edgeMargin: 80,
   },

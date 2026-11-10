@@ -1,12 +1,13 @@
 import { rgba } from '../render/color.js';
 import { TUNING } from '../data/tuning.js';
 import { cellKey, difficultyOf } from '../world.js';
+import { BOSSES } from '../data/enemies.js';
 
 const CELL = 14;
 const GAP = 3;
 
 // The arena grid in the bottom-right corner. Redder cells are harder;
-// outlined cells have been visited; the bright cell is where you are, with
+// outlined cells have been visited; boss arenas are marked once visited; the bright cell is where you are, with
 // a dot for your position inside it. Drawn in logical screen units.
 export function drawMinimap(ctx, game, view, palette) {
   const { world, cell, player } = game;
@@ -34,6 +35,23 @@ export function drawMinimap(ctx, game, view, palette) {
         ctx.lineWidth = 1.2;
         ctx.strokeRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1);
       }
+    }
+  }
+
+  // Boss arenas, once visited: a red dot, or a hollow ring once beaten.
+  for (const boss of BOSSES) {
+    if (!world.visited.has(cellKey(boss.cell))) continue;
+    const bx = x0 + boss.cell.col * (CELL + GAP) + CELL / 2;
+    const by = y0 + boss.cell.row * (CELL + GAP) + CELL / 2;
+    ctx.beginPath();
+    ctx.arc(bx, by, 4, 0, Math.PI * 2);
+    if (game.defeated.has(boss.id)) {
+      ctx.strokeStyle = palette.player;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = palette.danger;
+      ctx.fill();
     }
   }
 

@@ -45,12 +45,12 @@ test('pickups inside the pickup radius are drawn in and collected', () => {
   assert.equal(collected, 1);
 });
 
-test('pickups outside the radius are left alone and expire', () => {
+test('pickups outside the radius are left alone and never expire', () => {
   const player = { x: 0, y: 0, radius: 20 };
   const pool = createPool(1, createPickup);
   spawnBurst(pool, 300, 0, 1, 0, 0, 0, createRng(1));
-  for (let i = 0; i < settings.lifetime * 60 + 1; i++) {
+  for (let i = 0; i < 60 * 120; i++) {
     updatePickups(pool, player, 120, settings, 1000, () => assert.fail('collected'), 1 / 60);
   }
-  assert.equal(active(pool).length, 0);
+  assert.equal(active(pool).length, 1);
 });

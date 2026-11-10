@@ -2,6 +2,7 @@ import { classRadius } from '../data/classes.js';
 import { TUNING } from '../data/tuning.js';
 import { stepMovement, turnToward } from '../systems/movement.js';
 import { createTrigger } from '../systems/weapons.js';
+import { createAbilityState } from '../systems/abilities.js';
 
 export function createPlayer(cls) {
   const player = {
@@ -22,6 +23,8 @@ export function createPlayer(cls) {
     invuln: 0, // seconds of immunity left
     blink: 0, // seconds of damage blinking left
     morph: 0, // seconds of transformation animation left
+    shield: 0, // seconds of the Halo's shield left
+    abilityState: createAbilityState(),
   };
   setPlayerClass(player, cls);
   return player;
@@ -57,6 +60,7 @@ export function updatePlayer(player, moveX, moveY, aimX, aimY, tuning, dt) {
   player.invuln = Math.max(0, player.invuln - dt);
   player.blink = Math.max(0, player.blink - dt);
   player.morph = Math.max(0, player.morph - dt);
+  player.shield = Math.max(0, player.shield - dt);
 
   const p = tuning.player;
   // The arena membrane is handled by the game: it can be crossed or solid.

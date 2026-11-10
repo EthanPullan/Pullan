@@ -29,8 +29,9 @@ export function spawnBurst(pool, x, y, count, speedMin, speedMax, delay, rng) {
   return spawned;
 }
 
-// Ages, attracts and collects pickups. `onCollect(value)` is called for
-// each one the player touches once its collect delay has passed.
+// Attracts and collects pickups. They never expire: they stay until
+// collected or until the player leaves the arena. `onCollect(value)` is
+// called for each one the player touches once its collect delay has passed.
 export function updatePickups(pool, player, magnetRadius, params, arenaRadius, onCollect, dt) {
   for (const p of pool.items) {
     if (!p.active) continue;
@@ -38,10 +39,6 @@ export function updatePickups(pool, player, magnetRadius, params, arenaRadius, o
     p.prevY = p.y;
     p.age += dt;
     p.delay -= dt;
-    if (p.age >= params.lifetime) {
-      pool.release(p);
-      continue;
-    }
 
     const dx = player.x - p.x;
     const dy = player.y - p.y;
