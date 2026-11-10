@@ -1,7 +1,7 @@
 // Arena movement rules, run through the real game update.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, updateGame, hurtPlayer } from '../js/game.js';
+import { createGame, updateGame, hurtPlayer, debugSpawn } from '../js/game.js';
 import { createRng } from '../js/rng.js';
 import { TUNING } from '../js/data/tuning.js';
 
@@ -106,8 +106,40 @@ test('a cleared arena stays clear while you stay, and refills when you come back
 
 test('dropped bubbles stay in the arena until collected', () => {
   const game = setup({ col: 3, row: 3 }, 0, 0);
+  debugSpawn(game, 'drifter', 700); // an enemy left, so the arena isn't cleared
   game.pickups.spawn();
   Object.assign(game.pickups.items.find((p) => p.active), { x: 500, y: 0, delay: 0, age: 0 });
   hold(game, 0, 0, 60);
   assert.equal(game.pickups.activeCount, 1);
+});
+
+function dropBubble(game, x, y, delay = 0) {
+  Object.assign(game.pickups.spawn(), { x, y, prevX: x, prevY: y, vx: 0, vy: 0, delay, age: 0, value: 1 });
+}
+
+test('once an arena is cleared, every bubble left flies to the player and is collected', () => {
+  const game = setup({ col: 3, row: 3 }, 0, 0);
+  game.enemies.length = 0;
+  debugSpawn(game, 'drifter', 700); // harmless, keeps the arena from being clear
+  // Bubbles far outside the pickup radius, one still on its post-hit delay.
+  dropBubble(game, 600, 0);
+  dropBubble(game, -700, 300);
+  dropBubble(game, 0, -800, 5);
+  hold(game, 0, 0, 2);
+  assert.equal(game.pickups.activeCount, 3, 'they wait while an enemy is alive');
+  assert.equal(game.player.bubbles, 0);
+
+  for (const e of game.enemies) e.alive = false;
+  hold(game, 0, 0, 1.5);
+  assert.equal(game.pickups.activeCount, 0);
+  assert.equal(game.player.bubbles, 3);
+});
+
+test('a leftover mine does not stop an arena counting as cleared', () => {
+  const game = setup({ col: 3, row: 3 }, 0, 0);
+  game.enemies.length = 0;
+  debugSpawn(game, 'mine', 500);
+  dropBubble(game, 600, 0);
+  hold(game, 0, 0, 1.5);
+  assert.equal(game.player.bubbles, 1);
 });

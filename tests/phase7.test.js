@@ -111,6 +111,8 @@ test('an armed mine near the player winds up, then blasts and is gone', () => {
   game.player.invuln = 0;
   game.player.bubbles = 10;
   debugSpawn(game, 'mine', 40);
+  game.player.aim = Math.PI / 2;
+  debugSpawn(game, 'drifter', 700); // an enemy left, so spilled bubbles aren't pulled back
   run(game, ENEMIES.mine.armSeconds + 0.2);
   assert.equal(game.player.bubbles, 10, 'the blast waits for its wind-up');
   run(game, 1);

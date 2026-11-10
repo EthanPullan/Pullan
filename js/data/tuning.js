@@ -42,6 +42,9 @@ export const TUNING = {
     spillCollectDelay: 1, // seconds before spilled bubbles can be collected
     magnetAccel: 1800,
     magnetMaxSpeed: 520,
+    // Once an arena is cleared, every bubble left in it flies to the player.
+    clearedAccel: 4000,
+    clearedMaxSpeed: 1400,
   },
   spawning: {
     minDistanceFromPlayer: 450,

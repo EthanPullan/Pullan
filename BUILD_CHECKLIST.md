@@ -580,3 +580,13 @@ Not verified: whether fights are fair and fun, boss difficulty and length
 numbers for all new enemies and abilities. Under steady fire a boss flashes
 white much of the time; fast weapons may keep it white constantly.
 
+**Owner's change, after Phase 7:** once an arena is cleared (no enemies
+left), every bubble still in it flies to the player and is collected,
+whatever its distance and even if it was just spilled. Leftover mines don't
+hold up a clear (`hazard: true` in `enemies.js`), since they outlive their
+mine-layer and drop nothing. Speed is `clearedAccel` / `clearedMaxSpeed` in
+`tuning.js`. Verified: unit tests cover bubbles waiting while an enemy is
+alive, all arriving once cleared, and mines not blocking; in headless
+Chromium a scripted Spindrift cleared arena 4,3 and the 11 bubbles left
+around it all arrived within 1.6 s.
+

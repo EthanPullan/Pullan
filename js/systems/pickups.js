@@ -32,7 +32,9 @@ export function spawnBurst(pool, x, y, count, speedMin, speedMax, delay, rng) {
 // Attracts and collects pickups. They never expire: they stay until
 // collected or until the player leaves the arena. `onCollect(value)` is
 // called for each one the player touches once its collect delay has passed.
-export function updatePickups(pool, player, magnetRadius, params, arenaRadius, onCollect, dt) {
+// With `cleared` set (no enemies left), every pickup flies to the player at
+// once, whatever its distance or delay.
+export function updatePickups(pool, player, magnetRadius, params, arenaRadius, onCollect, dt, cleared = false) {
   for (const p of pool.items) {
     if (!p.active) continue;
     p.prevX = p.x;
@@ -43,20 +45,22 @@ export function updatePickups(pool, player, magnetRadius, params, arenaRadius, o
     const dx = player.x - p.x;
     const dy = player.y - p.y;
     const d = Math.hypot(dx, dy);
-    const ready = p.delay <= 0;
+    const ready = cleared || p.delay <= 0;
     if (ready && d < player.radius + params.radius) {
       onCollect(p.value);
       pool.release(p);
       continue;
     }
 
-    if (ready && d < magnetRadius && d > 1e-6) {
-      p.vx += (dx / d) * params.magnetAccel * dt;
-      p.vy += (dy / d) * params.magnetAccel * dt;
+    if (ready && (cleared || d < magnetRadius) && d > 1e-6) {
+      const accel = cleared ? params.clearedAccel : params.magnetAccel;
+      const maxSpeed = cleared ? params.clearedMaxSpeed : params.magnetMaxSpeed;
+      p.vx += (dx / d) * accel * dt;
+      p.vy += (dy / d) * accel * dt;
       const speed = Math.hypot(p.vx, p.vy);
-      if (speed > params.magnetMaxSpeed) {
-        p.vx *= params.magnetMaxSpeed / speed;
-        p.vy *= params.magnetMaxSpeed / speed;
+      if (speed > maxSpeed) {
+        p.vx *= maxSpeed / speed;
+        p.vy *= maxSpeed / speed;
       }
     } else {
       const keep = Math.exp(-params.drag * dt);

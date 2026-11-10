@@ -10,6 +10,7 @@
 //                  a roster; spawned by something else)
 //   groupSize      spawns as a pack of this size
 //   heavy          the player is pushed off it, not the other way round
+//   hazard         doesn't count toward clearing an arena (mines)
 //   stopToAttack   stands still while winding up
 //   attacks        used in turn; see systems/attacks.js. Every attack winds
 //                  up for `windup` seconds with a visible warning first.
@@ -88,7 +89,7 @@ const ENEMY_LIST = [
   {
     // Dropped by mine-layers. Harmless until armed; then a player within
     // `triggerRange` starts a fuse, shown as the blast radius.
-    id: 'mine', name: 'Mine', behaviour: 'static', noContact: true,
+    id: 'mine', name: 'Mine', behaviour: 'static', noContact: true, hazard: true,
     health: 1, speed: 0, accel: 300, drops: 0, contactDamage: 0, minDifficulty: 99,
     armSeconds: 1, lifetime: 15,
     hull: [c(0, 0, 7), ...ring(4, 8, 3, Math.PI / 4)],

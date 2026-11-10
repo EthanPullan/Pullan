@@ -467,7 +467,8 @@ export function updateGame(game, controls, dt) {
   updateProjectiles(game.enemyShots, game.playerTargets, arenaRadius, game.enemyShotEvents, dt);
   removeDead(game.enemies);
 
-  updatePickups(game.pickups, player, player.pickupRadius, pickupSettings, arenaRadius, game.onCollect, dt);
+  const cleared = !game.enemies.some((e) => e.alive && !e.def.hazard);
+  updatePickups(game.pickups, player, player.pickupRadius, pickupSettings, arenaRadius, game.onCollect, dt, cleared);
   updatePops(game.pops, dt);
   checkEvolution(game);
 }
