@@ -5,6 +5,8 @@ import { createGame, updateGame, debugSpawn, hurtPlayer } from '../js/game.js';
 import { createRng } from '../js/rng.js';
 import { TUNING } from '../js/data/tuning.js';
 
+const T2 = TUNING.evolution.thresholds[2];
+
 const DT = 1 / 60;
 const idle = { moveX: 0, moveY: 0, aimX: 0, aimY: -1000, fire: false, ability: false };
 
@@ -51,7 +53,7 @@ test('collecting a bubble queues a pickup sound', () => {
 test('evolving and devolving queue their own sounds', () => {
   const game = setup();
   game.path = { 2: 'skitter' };
-  game.player.bubbles = 20;
+  game.player.bubbles = T2;
   run(game, DT);
   assert.ok(types(game).includes('evolve'));
   game.sounds.length = 0;

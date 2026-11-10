@@ -298,17 +298,17 @@ to act on.
 - [x] Profile first. Record the top three costs in the log before changing
       anything.
 - [x] Fix only what the profile shows, then record the result.
-- [ ] Meets the performance budget in the starting numbers.
+- [x] Meets the performance budget in the starting numbers.
 
 **Gate (self-check):** before and after numbers written to the log.
 
 ## Phase 12: Balance and release
 
-- [ ] Script that reads the data files and prints time-to-kill for every class
+- [x] Script that reads the data files and prints time-to-kill for every class
       against every enemy.
 - [ ] Adjust data until the pacing targets are met in the script's estimate.
-- [ ] Remove or hide debug keys behind a single flag.
-- [ ] A short README: how to run it, the controls, and how to change balance.
+- [x] Remove or hide debug keys behind a single flag.
+- [x] A short README: how to run it, the controls, and how to change balance.
 
 **Gate (human):** the owner plays a full run and reports where it dragged or
 spiked. Repeat data changes until they are satisfied.
@@ -321,6 +321,9 @@ Ideas noticed along the way that are outside the agreed scope. One line each.
 
 - A short controls hint on first load (WASD, mouse, F3) until the Phase 8 title screen exists.
 - Tanks are about 50 units across on a 720-unit screen. If they feel small, a camera zoom constant is a one-line addition.
+- Backing away from an enemy near the edge while holding a key toward it crosses into the next arena mid-fight. The scripted player kept doing this; people may too. A short delay before crossing, or crossing only when no enemy is close, would prevent it.
+- With thresholds of 150 and 800, a hit (1 to 4 bubbles) is small next to a final form's total, so devolving late in a run is rare. If that removes the tension, hits could cost more in harder arenas.
+- Bosses could wait for something (a number of arenas visited, or a minimum bubble total) if the first boss comes too early; see the session 10 log.
 
 ## Log
 
@@ -762,4 +765,71 @@ there is no evidence yet that they matter on real hardware.
 The budget item stays unticked: it needs a measurement on a real laptop.
 F3 now shows fps with update and draw times in milliseconds, and P (with
 F3 open) adds 300 enemies.
+
+### Session 10: Phase 11 result and Phase 12
+
+**Phase 11 budget, measured by the owner:** on their laptop the game holds
+at least 600 enemies before lagging, well past the budget of 150 entities
+and 400 particles.
+
+**Phase 12.** `tools/balance.js` (`npm run balance`, about 25 s) prints a
+time-to-kill table for every form against every enemy, then plays the real
+game in Node with a scripted player (`tools/bot.js`) three times per final
+form and reports medians against the pacing targets.
+
+Starting point (thresholds 20 and 60): tier 2 at 0.6 min, tier 3 at 1.4,
+first boss at 5.9; far too fast.
+
+Experiments, each a full pacing run:
+- Thresholds 100 / 450: tier 3 and first boss on target, tier 2 a little
+  fast, no ejections.
+- Enemy health ×3 with thresholds 50 / 150: weaker forms were ejected over
+  and over (up to 127 times a run) and Heavy and Swarm runs never reached a
+  boss. Ruled out.
+- Enemy health ×2 with thresholds 70 / 300: tier 3 far too slow for Heavy
+  and Swarm.
+Every setting showed the Skitter branch far ahead of Barnacle and Brood.
+
+Investigating the branch gap, in order:
+1. Tier-2 damage per second was 12 / 6 / 5 (Skitter / Barnacle / Brood).
+   Evened to 9 / 9 / 8, and the Heavy and Swarm final forms raised to about
+   12.6 to 12.9 (Spindrift 20, Needlejet 14, Halo 16 unchanged). Weapon
+   changes: twin 6 → 4.5 shots/s; cannon 1.5 → 1.8 shots/s and 4 → 5
+   damage; seeker 2.5 → 4 shots/s; shell 1.1 → 1.4 shots/s, 4 → 5 damage,
+   blast 3 → 4; harpoon 1.4 → 1.8 shots/s, 5 → 7 damage; swarm 3 → 4.3
+   shots/s.
+2. Barnacle still lagged. Measured: it killed nearly as fast as the others
+   but banked a third of the bubbles. Armour for the Heavy branch was tried
+   and made no difference, so it was removed.
+3. Tracing where bubbles went showed the scripted player crossing into the
+   next arena mid-fight when it backed away near the edge (and at the
+   diagonal between two quarters), abandoning hundreds of bubbles. Fixed in
+   the scripted player, not the game; see Suggestions. After that all three
+   tier-2 forms cleared every arena and banked the same; Barnacle loses
+   about twice as many bubbles to hits, as a slow, big form should.
+
+Final data: evolution thresholds 150 and 800 (devolve below 120 and 640).
+
+| Milestone | Scripted player (median) | Target |
+|---|---|---|
+| Tier 2 | 3.0 min | 3 min |
+| Tier 3 | 9.7 min (8.8 to 11.6 by branch) | 10 min |
+| First boss | 12.2 min | 20 min |
+| Second boss | 14.0 to 20.7 min | none |
+
+The first-boss target is not met, and no sensible data change meets it: the
+scripted player heads straight for a boss on reaching its final form, and a
+boss fight takes about a minute. That is a design question for the owner
+(see Suggestions), so the pacing item stays unticked.
+
+Other changes:
+- Debug tools need `?debug` in the address. Without it F3, =, -, B and P
+  do nothing (checked in the browser). The bubble debug keys now add or
+  remove 50, to suit the new thresholds.
+- `README.md`: running, controls, debug tools, changing balance, tests and
+  layout. `npm test` and `npm run balance` added to `package.json`.
+- Tests that assumed thresholds of 20 and 60 now read them from the data.
+
+Not verified: pacing with a real person. The scripted player never dodges;
+the owner's full run is the real test.
 

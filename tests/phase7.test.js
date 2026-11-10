@@ -6,6 +6,8 @@ import { createRng } from '../js/rng.js';
 import { ENEMIES, BOSSES, ROSTERS } from '../js/data/enemies.js';
 import { TUNING } from '../js/data/tuning.js';
 
+const T3 = TUNING.evolution.thresholds[3];
+
 const DT = 1 / 60;
 const idle = { moveX: 0, moveY: 0, aimX: 0, aimY: -1000, fire: false, ability: false };
 
@@ -123,7 +125,7 @@ test('an armed mine near the player winds up, then blasts and is gone', () => {
 test('a charger hurts only while dashing', () => {
   const game = setup();
   game.player.invuln = 0;
-  game.player.bubbles = 15; // below 20, so no evolution choice pauses the game
+  game.player.bubbles = 15; // below tier 2, so no evolution choice pauses the game
   debugSpawn(game, 'charger', 300);
   const c = alive(game, 'charger')[0];
   const before = game.player.bubbles;
@@ -139,7 +141,7 @@ test('a charger hurts only while dashing', () => {
 test('a shockwave hurts and pushes enemies in range only', () => {
   const game = setup();
   game.path = { 2: 'barnacle', 3: 'depthcharge' };
-  game.player.bubbles = 60;
+  game.player.bubbles = T3;
   run(game, 0.1);
   assert.equal(game.player.classId, 'depthcharge');
   debugSpawn(game, 'charger', 120);
@@ -153,21 +155,21 @@ test('a shockwave hurts and pushes enemies in range only', () => {
 test('the shield makes the player immune for its duration', () => {
   const game = setup();
   game.path = { 2: 'brood', 3: 'halo' };
-  game.player.bubbles = 60;
+  game.player.bubbles = T3;
   run(game, 1.1); // evolve and let the morph immunity pass
   game.player.invuln = 0;
   run(game, DT, { ...idle, ability: true });
   hurtPlayer(game, 5);
-  assert.equal(game.player.bubbles, 60);
+  assert.equal(game.player.bubbles, T3);
   run(game, 2.6);
   hurtPlayer(game, 5);
-  assert.equal(game.player.bubbles, 55);
+  assert.equal(game.player.bubbles, T3 - 5);
 });
 
 test('Burst fires a full ring of 16 shots', () => {
   const game = setup();
   game.path = { 2: 'skitter', 3: 'spindrift' };
-  game.player.bubbles = 60;
+  game.player.bubbles = T3;
   run(game, 0.1);
   assert.equal(game.player.classId, 'spindrift');
   const before = game.playerShots.activeCount;
@@ -178,7 +180,7 @@ test('Burst fires a full ring of 16 shots', () => {
 test('Dash throws the player forward and makes them briefly immune', () => {
   const game = setup();
   game.path = { 2: 'skitter', 3: 'needlejet' };
-  game.player.bubbles = 60;
+  game.player.bubbles = T3;
   run(game, 1.1);
   game.player.invuln = 0;
   run(game, DT, { ...idle, moveX: 1, ability: true });

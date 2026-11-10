@@ -8,13 +8,14 @@ import {
 } from '../js/save.js';
 
 const SIZE = TUNING.world.size;
+const T3 = TUNING.evolution.thresholds[3];
 const idle = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, fire: false, ability: false };
 
 // A game partway through a run: Halo, two bosses down, several arenas seen.
 function midRun() {
   const game = createGame(createRng(1));
   game.path = { 2: 'brood', 3: 'halo' };
-  game.player.bubbles = 75;
+  game.player.bubbles = T3 + 15;
   updateGame(game, idle, 1 / 60); // evolves twice through the remembered path
   updateGame(game, idle, 1 / 60);
   game.cell = { col: 1, row: 5 };
@@ -30,7 +31,7 @@ test('a save holds the class path, bubbles, arena, visited arenas and boss kills
   assert.equal(save.version, SAVE_VERSION);
   assert.equal(save.classId, 'halo');
   assert.deepEqual(save.path, { 2: 'brood', 3: 'halo' });
-  assert.equal(save.bubbles, 75);
+  assert.equal(save.bubbles, T3 + 15);
   assert.deepEqual(save.cell, { col: 1, row: 5 });
   assert.ok(save.visited.includes('0,0'));
   assert.deepEqual(save.defeated, ['bloom']);

@@ -267,13 +267,23 @@ const spawnMenu = createSpawnMenu(
   (id) => debugSpawn(game, id),
 );
 
+// Debug tools (the F3 overlay and its keys) only work with `?debug` in the
+// address, so players never trip over them.
+const DEBUG = query.has('debug');
+
 function handleDebugKeys() {
-  if (input.consume('F3')) debug.enabled = !debug.enabled;
-  if (input.consume('Equal') && debug.enabled) grantBubbles(game, 10);
-  if (input.consume('Minus') && debug.enabled) grantBubbles(game, -10);
-  if (input.consume('KeyB') && debug.enabled) spawnMenu.toggle();
-  if (input.consume('KeyP') && debug.enabled) debugStress(game, 300);
-  if (!debug.enabled) spawnMenu.hide();
+  // Read every debug key each frame so presses never queue up unused.
+  const [f3, more, less, menu, stress] = ['F3', 'Equal', 'Minus', 'KeyB', 'KeyP'].map((k) => input.consume(k));
+  if (!DEBUG) return;
+  if (f3) debug.enabled = !debug.enabled;
+  if (!debug.enabled) {
+    spawnMenu.hide();
+    return;
+  }
+  if (more) grantBubbles(game, 50);
+  if (less) grantBubbles(game, -50);
+  if (menu) spawnMenu.toggle();
+  if (stress) debugStress(game, 300);
 }
 
 // `?test` exposes the game to automated browser checks. Getters, because
@@ -358,7 +368,7 @@ function render(alpha) {
       `         pickups ${game.pickups.activeCount}/${game.pickups.capacity}`
         + `, particles ${game.particles.activeCount}/${game.particles.capacity}`,
       `class    ${player.classId}  path ${JSON.stringify(game.path)}`,
-      `bubbles  ${player.bubbles}  = / - to add or remove 10, B spawn menu, P add 300 enemies`,
+      `bubbles  ${player.bubbles}  = / - to add or remove 50, B spawn menu, P add 300 enemies`,
       `bosses   beaten ${[...game.defeated].join(', ') || 'none'}`,
       `speed    ${Math.hypot(player.vx, player.vy).toFixed(0)}`,
       `position ${player.x.toFixed(0)}, ${player.y.toFixed(0)}`,

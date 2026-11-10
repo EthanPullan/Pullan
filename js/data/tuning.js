@@ -55,7 +55,7 @@ export const TUNING = {
     edgeMargin: 120, // enemies turn back this far inside the membrane
   },
   evolution: {
-    thresholds: { 1: 0, 2: 20, 3: 60 }, // bubbles needed to reach each tier
+    thresholds: { 1: 0, 2: 150, 3: 800 }, // bubbles needed to reach each tier (see tools/balance.js)
     devolveFraction: 0.8, // devolve below this share of your tier's threshold
     morphSeconds: 0.6, // length of the transformation animation
     morphInvulnSeconds: 1,
