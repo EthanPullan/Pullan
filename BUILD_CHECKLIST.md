@@ -284,11 +284,11 @@ to act on.
 
 ## Phase 10: Saving and settings
 
-- [ ] Save class path, bubble total, arena position, visited arenas and boss
+- [x] Save class path, bubble total, arena position, visited arenas and boss
       kills, with a version number. Save on arena change and on pause.
-- [ ] A corrupt or outdated save starts a new game instead of crashing.
-- [ ] Settings: volume, screen shake on or off, reset save with confirmation.
-- [ ] Tests: save then load returns the same state; corrupt input is rejected.
+- [x] A corrupt or outdated save starts a new game instead of crashing.
+- [x] Settings: volume, screen shake on or off, reset save with confirmation.
+- [x] Tests: save then load returns the same state; corrupt input is rejected.
 
 **Gate (self-check):** reload mid-run and continue in the same arena.
 
@@ -669,4 +669,46 @@ and a `pop` sound for deaths; the checklist's list had neither.
 
 Not verified: how anything sounds. Headless Chromium plays audio into a
 silent device, so only that the right sounds were triggered was checked.
+
+### Session 8: Phase 10
+
+**Phase 10.** Built as listed. Verified in headless Chromium:
+- The gate: started a run, crossed east into arena 4,3, evolved to Barnacle
+  with 23 bubbles, paused, reloaded the page; the title offered Continue,
+  and Continue resumed as Barnacle with 23 bubbles in arena 4,3 with the
+  same visited arenas.
+- Settings (volume 35%, screen shake off) survived a reload.
+- With a save, New game needed a second N and then replaced the save.
+- Reset save needed a second click, returned to the title and removed the
+  save.
+- A corrupt save and an outdated (version 0) save each showed a notice and
+  no Continue, and Enter started a new game.
+- Leaving the page mid-run saved it.
+- No console errors.
+
+`tests/save.test.js` covers the round trip (save, store as text, load into
+a fresh game, save again: identical), arriving at the arena centre with the
+arena populated, and 20 kinds of corrupt or outdated input, each rejected;
+plus settings falling back to defaults.
+
+What is saved (`js/save.js`, version 1): class, class path, bubbles,
+current arena, the ejection history, visited arenas, beaten bosses,
+unlocked forms, kills, and whether the victory screen has been shown. You
+always return to the centre of the saved arena, which is refilled with
+enemies. Saved: on every arena change, on pause (including leaving the tab
+or closing the page), and when a new run starts or restarts.
+
+Additions and choices not in the checklist:
+- Settings is a new screen off the pause menu (O), not reachable from the
+  title. Resetting the save returns to the title.
+- The title offers Continue (Enter) when a save exists; New game (N) then
+  asks for confirmation because it replaces the save.
+- A save that can't be read is reported on the title instead of silently
+  ignored.
+- One shared "press twice to confirm" helper now backs Restart, New game
+  and Reset save.
+- `effects.screenShake` moved out of `tuning.js` into the player's settings.
+
+Not verified: real browsers with storage blocked (the code guards every
+storage call, but only normal storage was exercised).
 

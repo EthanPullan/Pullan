@@ -276,3 +276,51 @@ canvas {
 .pause-button[hidden] {
   display: none;
 }
+
+.notice {
+  max-width: 420px;
+  margin: 0 auto 16px !important;
+  color: #ffd2c8;
+}
+
+.title-buttons {
+  min-width: 240px;
+  margin: 0 auto;
+  width: max-content;
+}
+
+.overlay-button[hidden] {
+  display: none;
+}
+
+/* Settings */
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 18px auto 6px;
+  width: max-content;
+  text-align: left;
+}
+
+.settings label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.settings input[type="range"] {
+  width: 180px;
+  accent-color: #5ef2e0;
+}
+
+.settings input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #5ef2e0;
+}
+
+.settings output {
+  min-width: 3em;
+  opacity: 0.75;
+}

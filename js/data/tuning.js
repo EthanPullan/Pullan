@@ -74,7 +74,6 @@ export const TUNING = {
   },
   effects: {
     particlePoolSize: 1024,
-    screenShake: true, // Phase 10 adds a setting for this
     shakeMax: 14, // units the view can jolt at full shake
     shakeDecay: 1.8, // shake lost per second
     trailInterval: 0.05, // seconds between trail bubbles while moving fast

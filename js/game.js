@@ -47,6 +47,7 @@ export function createGame(rng) {
     shake: 0, // screen shake, 0 to 1, decaying
     hitPause: 0, // seconds the simulation holds still after a big impact
     trailTimer: 0,
+    saveDue: false, // set when the run should be saved
     unlocked: new Set([START_CLASS]), // every form reached at least once, for the class tree
     defeated: new Set(), // ids of bosses beaten
     victoryPending: false, // true while the victory screen is up; the game pauses
@@ -322,6 +323,7 @@ function enterArena(game, cell, entry, kind) {
   game.cell = { ...cell };
   game.world.visited.add(cellKey(cell));
   game.arenaId++;
+  game.saveDue = true; // main.js saves after every arena change
 
   game.enemies.length = 0;
   clearPool(game.playerShots);
@@ -331,7 +333,7 @@ function enterArena(game, cell, entry, kind) {
 
   player.x = player.prevX = entry.x;
   player.y = player.prevY = entry.y;
-  if (kind === 'eject') {
+  if (kind === 'eject' || kind === 'load') {
     player.vx = 0;
     player.vy = 0;
     player.invuln = TUNING.world.ejectInvulnSeconds;
@@ -359,6 +361,23 @@ function advanceTransition(game, dt) {
     tr.swapped = true;
   }
   if (tr.t >= duration) game.transition = null;
+}
+
+// Restores a checked save (see save.js) into a freshly created game: the
+// form, bubbles, progress, and the arena, entered at its centre.
+export function loadGame(game, save) {
+  const { player } = game;
+  game.path = { ...save.path };
+  player.bubbles = save.bubbles;
+  game.kills = save.kills;
+  game.victoryShown = save.victoryShown;
+  game.history = save.history.map((c) => ({ ...c }));
+  game.world.visited = new Set(save.visited);
+  game.defeated = new Set(save.defeated);
+  game.unlocked = new Set(save.unlocked);
+  setPlayerClass(player, CLASSES[save.classId]);
+  game.playerTargets = [player, ...player.drones];
+  enterArena(game, save.cell, { x: 0, y: 0 }, 'load');
 }
 
 // How dark the screen is: 0 normally, rising to 1 at the swap.

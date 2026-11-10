@@ -6,8 +6,9 @@ import { createInput } from './input.js';
 import { createRng, seedFromQuery } from './rng.js';
 import { createCamera, updateCamera, screenToWorld } from './camera.js';
 import {
-  createGame, updateGame, chooseClass, grantBubbles, fadeAmount, debugSpawn, dismissVictory,
+  createGame, updateGame, chooseClass, grantBubbles, fadeAmount, debugSpawn, dismissVictory, loadGame,
 } from './game.js';
+import { serialize, parseSave, parseSettings } from './save.js';
 import { nextScreen } from './screens.js';
 import { difficultyOf } from './world.js';
 import { clearSpriteCache } from './render/tank.js';
@@ -18,7 +19,7 @@ import { drawHud } from './ui/hud.js';
 import { drawMinimap } from './ui/minimap.js';
 import { createChoiceOverlay } from './ui/choice.js';
 import { createVictoryOverlay } from './ui/victory.js';
-import { createTitleScreen, createPauseMenu, createTreeView } from './ui/menus.js';
+import { createTitleScreen, createPauseMenu, createTreeView, createSettingsScreen } from './ui/menus.js';
 import { createSpawnMenu } from './ui/spawnmenu.js';
 import { createDebug, tickFps, drawDebugText } from './ui/debug.js';
 
@@ -50,7 +51,58 @@ const backdrop = {
   specks: createSpecks(visualRng, TUNING.background),
   ambient: createAmbient(visualRng, TUNING.background),
 };
-const audio = createAudio();
+// --- Saved run and settings -----------------------------------------------
+
+// Browser storage can be unavailable (private windows, blocked site data),
+// so every access is guarded and the game carries on without it.
+const SAVE_KEY = 'glowfathom.save';
+const SETTINGS_KEY = 'glowfathom.settings';
+const MASTER_VOLUME = 0.5; // the loudest the volume setting goes
+
+function readStorage(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key, text) {
+  try {
+    window.localStorage.setItem(key, text);
+  } catch {
+    // Not saved; nothing else to do.
+  }
+}
+
+function removeStorage(key) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Nothing stored to remove.
+  }
+}
+
+const stored = parseSave(readStorage(SAVE_KEY), TUNING.world.size);
+let savedRun = stored.save;
+let titleMessage = stored.corrupt
+  ? "Your saved run couldn't be read, so it can't be continued. A new game will replace it."
+  : null;
+
+let settings = parseSettings(readStorage(SETTINGS_KEY));
+const audio = createAudio({ volume: settings.volume * MASTER_VOLUME });
+
+function saveRun() {
+  savedRun = serialize(game);
+  writeStorage(SAVE_KEY, JSON.stringify(savedRun));
+  game.saveDue = false;
+}
+
+function changeSettings(next) {
+  settings = next;
+  writeStorage(SETTINGS_KEY, JSON.stringify(settings));
+  audio.setVolume(settings.volume * MASTER_VOLUME);
+}
 const camera = createCamera(game.player.x, game.player.y);
 let cameraArena = game.arenaId;
 const debug = createDebug();
@@ -74,16 +126,22 @@ function newGame() {
 
 let screen = 'title';
 
-const title = createTitleScreen(() => go('start'));
+const title = createTitleScreen({ onNew: () => go('start'), onContinue: () => go('load') });
 const pauseMenu = createPauseMenu({
   onResume: () => go('resume'),
   onTree: () => go('tree'),
+  onSettings: () => go('settings'),
   onRestart: () => go('restart'),
+});
+const settingsScreen = createSettingsScreen({
+  onChange: changeSettings,
+  onBack: () => go('back'),
+  onReset: () => go('reset'),
 });
 const tree = createTreeView(() => go('back'), PALETTE);
 const choice = createChoiceOverlay((classId) => pick(classId));
 const victory = createVictoryOverlay(() => go('continue'));
-const overlays = { title, paused: pauseMenu, tree, choosing: choice, victory };
+const overlays = { title, paused: pauseMenu, tree, settings: settingsScreen, choosing: choice, victory };
 
 // So the pause menu can be reached with the mouse as well as Esc.
 const pauseButton = document.createElement('button');
@@ -98,7 +156,8 @@ document.body.appendChild(pauseButton);
 function showScreen() {
   pauseButton.hidden = screen !== 'playing';
   for (const [name, o] of Object.entries(overlays)) if (name !== screen) o.hide();
-  if (screen === 'title') title.show();
+  if (screen === 'title') title.show({ canContinue: savedRun !== null, message: titleMessage });
+  if (screen === 'settings') settingsScreen.show(settings);
   if (screen === 'paused') pauseMenu.show();
   if (screen === 'tree') tree.show(game.unlocked, game.player.classId);
   if (screen === 'choosing') choice.show(game.pendingChoice.map((id) => CLASSES[id]), PALETTE.player);
@@ -110,11 +169,34 @@ function showScreen() {
 function go(action) {
   const next = nextScreen(screen, action);
   if (!next) return false;
-  if (action === 'restart') newGame();
+  if (action === 'start' || action === 'restart') {
+    newGame();
+    saveRun(); // the new run replaces the old save
+  }
+  if (action === 'load') {
+    newGame();
+    loadGame(game, deserializedCopy(savedRun));
+    camera.x = camera.prevX = game.player.x;
+    camera.y = camera.prevY = game.player.y;
+    cameraArena = game.arenaId;
+  }
+  if (action === 'pause') saveRun();
+  if (action === 'reset') {
+    removeStorage(SAVE_KEY);
+    savedRun = null;
+    titleMessage = null;
+    newGame();
+  }
   if (action === 'continue') dismissVictory(game);
   screen = next;
   showScreen();
   return true;
+}
+
+// A save as loaded from storage is already checked; this copy keeps the
+// held save untouched by the game that loads it.
+function deserializedCopy(save) {
+  return JSON.parse(JSON.stringify(save));
 }
 
 function pick(classId) {
@@ -136,11 +218,15 @@ function handleKeys() {
   const enter = input.consume('Enter') | input.consume('Space');
   const treeKey = input.consume('KeyT');
   const restartKey = input.consume('KeyR');
+  const newKey = input.consume('KeyN');
+  const settingsKey = input.consume('KeyO');
   const digits = [1, 2, 3].map((n) => input.consume(`Digit${n}`));
 
   switch (screen) {
     case 'title':
-      if (enter) go('start');
+      if (enter && title.hasSave) go('load');
+      else if (enter) go('start');
+      else if (newKey) title.pressNew();
       break;
     case 'playing':
       if (esc) go('pause');
@@ -150,7 +236,11 @@ function handleKeys() {
     case 'paused':
       if (esc) go('resume');
       else if (treeKey) go('tree');
+      else if (settingsKey) go('settings');
       else if (restartKey) pauseMenu.restart();
+      break;
+    case 'settings':
+      if (esc || settingsKey) go('back');
       break;
     case 'tree':
       if (esc || treeKey) go('back');
@@ -190,6 +280,7 @@ if (query.has('test')) {
   window.__test = {
     get game() { return game; },
     get screen() { return screen; },
+    get settings() { return settings; },
     camera, view, chooseClass, debugSpawn, audio,
   };
 }
@@ -232,7 +323,7 @@ function render(alpha) {
     y: camera.prevY + (camera.y - camera.prevY) * alpha,
   };
   // Screen shake: a jolt that grows with the square of the shake amount.
-  if (TUNING.effects.screenShake && game.shake > 0) {
+  if (settings.screenShake && game.shake > 0) {
     const amount = game.shake * game.shake * TUNING.effects.shakeMax;
     const t = performance.now() / 1000;
     cam.x += amount * (Math.sin(t * 53) + Math.sin(t * 31.7)) / 2;
@@ -285,6 +376,7 @@ startLoop((elapsed) => {
     const { steps, alpha } = stepper.advance(elapsed);
     for (let i = 0; i < steps && !game.pendingChoice && !game.victoryPending; i++) step();
     lastAlpha = alpha;
+    if (game.saveDue) saveRun();
   }
   for (const s of game.sounds) audio.play(s.type, s.size);
   game.sounds.length = 0;

@@ -5,19 +5,23 @@ import { nextScreen, SCREENS, ACTIONS } from '../js/screens.js';
 // Every move that should be possible, and nothing else.
 const ALLOWED = [
   ['title', 'start', 'playing'],
+  ['title', 'load', 'playing'],
   ['playing', 'pause', 'paused'],
   ['playing', 'choose', 'choosing'],
   ['playing', 'win', 'victory'],
   ['paused', 'resume', 'playing'],
   ['paused', 'restart', 'playing'],
   ['paused', 'tree', 'tree'],
+  ['paused', 'settings', 'settings'],
+  ['settings', 'back', 'paused'],
+  ['settings', 'reset', 'title'],
   ['tree', 'back', 'paused'],
   ['choosing', 'pick', 'playing'],
   ['victory', 'continue', 'playing'],
 ];
 
-test('there are six screens', () => {
-  assert.deepEqual(SCREENS.sort(), ['choosing', 'paused', 'playing', 'title', 'tree', 'victory']);
+test('there are seven screens', () => {
+  assert.deepEqual(SCREENS.sort(), ['choosing', 'paused', 'playing', 'settings', 'title', 'tree', 'victory']);
 });
 
 test('every allowed move works', () => {
