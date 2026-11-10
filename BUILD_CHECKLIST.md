@@ -229,15 +229,15 @@ six end classes feel distinct.
 
 ## Phase 6: World of arenas
 
-- [ ] 7×7 grid with difficulty from distance to the centre.
-- [ ] Crossing the membrane fades for 0.4 s and places the player at the
+- [x] 7×7 grid with difficulty from distance to the centre.
+- [x] Crossing the membrane fades for 0.4 s and places the player at the
       opposite edge of the neighbouring arena. Enemies do not follow.
-- [ ] Outer membranes are solid and bounce the player back.
-- [ ] Each arena is populated on entry from a roster for its difficulty.
-- [ ] At zero bubbles the player is ejected to the previous arena with 2 s of
+- [x] Outer membranes are solid and bounce the player back.
+- [x] Each arena is populated on entry from a roster for its difficulty.
+- [x] At zero bubbles the player is ejected to the previous arena with 2 s of
       invulnerability.
-- [ ] Minimap: grid, visited arenas, current position.
-- [ ] Tests: neighbour lookup at centre, edge and corner; difficulty for every
+- [x] Minimap: grid, visited arenas, current position.
+- [x] Tests: neighbour lookup at centre, edge and corner; difficulty for every
       cell; rosters only contain enemies allowed at that difficulty.
 
 **Gate (self-check):** travel from centre to a corner and back without error.
@@ -468,4 +468,46 @@ Additions and changes not in the checklist:
 Not verified: whether the six final forms feel distinct, weapon balance, and
 whether the hit blink is too harsh: the scripted player was mid-blink
 (tank invisible) in 3 of 9 random frames.
+
+### Session 4: Phase 6
+
+**Phase 6.** Built as listed. Verified in headless Chromium: a scripted
+player travelled from the centre east to 6,3, north to the corner 6,0, west
+to 3,0 and south back to 3,3, crossing 12 membranes with a fade each time
+and no repeats; every arena was filled from the roster for its difficulty;
+a player pressed into corner 6,0's walls stayed inside; a hit at 0 bubbles
+in 4,3 ejected the player to 3,3 at its centre with 2 s of immunity; the
+minimap showed the route, the current arena and the player's position. No
+console errors. `tests/game.test.js` runs the real game update in Node to
+cover crossing, solid walls, sliding, drifting, ejection and clean-up.
+
+Interpretations of the checklist:
+- The whole membrane is passable. The quarter you leave through (east,
+  west, north, south) picks the neighbour. Quarters with no arena beyond
+  are solid and drawn as a heavier grey-blue wall.
+- You cross only while holding a movement key toward that quarter (D east,
+  A west, W north, S south). Drifting into the membrane bounces.
+- A hit that leaves you at 0 bubbles ejects you to the arena you came from,
+  at its centre. In the starting arena, with nowhere to go back to, the
+  arena is reset instead. Hits while already at 0 also eject.
+- The game pauses during the 0.4 s fade; the arena swaps at its midpoint.
+  Shots, pickups and enemies do not carry over.
+- Arenas keep topping themselves up from their roster every 4 s while you
+  stay, as in Phase 4. Rosters (by difficulty 0 to 3): 5 drifters + 2
+  chasers; 3 + 3 + 2 strafers; 2 + 4 + 4; 2 + 5 + 5.
+
+Bug found and fixed while testing: the first crossing rule (outward speed
+over 20 units/s) let a player sliding along the west membrane cross back
+and forth between two arenas about 20 times, and an angle-based fix still
+allowed it near quarter boundaries. Crossing now depends on which keys are
+held, which rules out an immediate return.
+
+Additions not in the checklist:
+- Minimap cells are tinted redder with difficulty, so harder arenas are
+  visible before you enter them.
+- Arrival is 120 units inside the membrane, and the ejection history keeps
+  the last 64 arenas.
+
+Not verified: whether exploring feels good, whether difficulty rises at the
+right pace, and whether the solid wall reads clearly enough.
 

@@ -1,7 +1,17 @@
 import { rgba } from './color.js';
 
+// Angles (canvas y points down) covered by each quarter of the membrane.
+const QUARTERS = {
+  east: [-Math.PI / 4, Math.PI / 4],
+  south: [Math.PI / 4, (3 * Math.PI) / 4],
+  west: [(3 * Math.PI) / 4, (5 * Math.PI) / 4],
+  north: [(5 * Math.PI) / 4, (7 * Math.PI) / 4],
+};
+
 // Draws the arena interior and its wobbling membrane, centred on the origin.
-export function drawArena(ctx, radius, time, palette) {
+// `solid` lists the quarters with no arena beyond them; they are drawn as a
+// heavier, still wall instead.
+export function drawArena(ctx, radius, time, palette, solid = []) {
   const water = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
   water.addColorStop(0, rgba(palette.water, 0.9));
   water.addColorStop(1, rgba(palette.water, 0.35));
@@ -29,6 +39,18 @@ export function drawArena(ctx, radius, time, palette) {
   ctx.strokeStyle = rgba(palette.membrane, 0.85);
   ctx.lineWidth = 1.5;
   ctx.stroke();
+
+  for (const side of solid) {
+    const [from, to] = QUARTERS[side];
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + 4, from, to);
+    ctx.strokeStyle = rgba(palette.wall, 0.35);
+    ctx.lineWidth = 18;
+    ctx.stroke();
+    ctx.strokeStyle = rgba(palette.wall, 0.95);
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
 }
 
 // Light given off by a creature, added on top of what is beneath it.

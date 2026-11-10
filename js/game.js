@@ -4,7 +4,10 @@
 import { TUNING, PALETTE } from './data/tuning.js';
 import { CLASSES, CLASS_LIST, START_CLASS } from './data/classes.js';
 import { WEAPONS } from './data/weapons.js';
-import { ENEMIES, ARENA_POPULATION } from './data/enemies.js';
+import { ENEMIES, ROSTERS } from './data/enemies.js';
+import {
+  createWorld, cellKey, difficultyOf, exitDirection, neighbour, entryPosition, rosterFor,
+} from './world.js';
 import { createPlayer, updatePlayer, applyRecoil, setPlayerClass } from './entities/player.js';
 import { createEnemy, updateEnemy, damageEnemy } from './entities/enemy.js';
 import { createPool } from './systems/pool.js';
@@ -16,6 +19,7 @@ import { createPickup, spawnBurst, updatePickups } from './systems/pickups.js';
 import { createSpawner, updateSpawner, spawnPoint } from './systems/spawning.js';
 import { evaluateEvolution } from './systems/evolution.js';
 import { updateDrones } from './systems/drones.js';
+import { constrainToArena } from './systems/movement.js';
 import { createPop, spawnPop, updatePops } from './render/effects.js';
 
 const combat = TUNING.combat;
@@ -23,7 +27,13 @@ const pickupSettings = TUNING.pickups;
 
 export function createGame(rng) {
   const player = createPlayer(CLASSES[START_CLASS]);
+  const world = createWorld(TUNING.world.size);
   const game = {
+    world,
+    cell: { ...world.centre }, // the arena you are in
+    history: [], // arenas you came from, most recent last; ejection returns to them
+    transition: null, // set while fading between arenas
+    arenaId: 0, // increases on every arena entry, so the camera knows to snap
     rng,
     time: 0,
     player,
@@ -36,7 +46,7 @@ export function createGame(rng) {
     enemyShots: createPool(combat.enemyShotPoolSize, createProjectile),
     pickups: createPool(pickupSettings.poolSize, createPickup),
     pops: createPool(combat.popPoolSize, createPop),
-    spawner: createSpawner(ARENA_POPULATION),
+    spawner: createSpawner(rosterFor(0, ROSTERS)),
   };
 
   // Event handlers are made once here, so the update loop allocates none.
@@ -104,6 +114,97 @@ export function hurtPlayer(game, damage) {
   player.invuln = TUNING.player.invulnSeconds;
   player.blink = TUNING.player.invulnSeconds;
   spawnPop(game.pops, player.x, player.y, player.radius * 1.2, combat.deathPopSeconds, PALETTE.danger);
+  if (player.bubbles === 0 && !game.transition) eject(game);
+}
+
+// --- Arenas --------------------------------------------------------------
+
+function startTransition(game, cell, entry, kind) {
+  game.transition = { t: 0, cell, entry, kind, swapped: false };
+}
+
+// Hit with no bubbles left: back to the arena you came from, at its centre.
+// In the starting arena, with nowhere to go back to, the arena is reset.
+function eject(game) {
+  const back = game.history.pop() || game.cell;
+  startTransition(game, back, { x: 0, y: 0 }, 'eject');
+}
+
+// Touching a quarter of the membrane while holding a movement key toward it
+// (D for east, A for west, W for north, S for south) crosses into the
+// neighbouring arena, if there is one. Sliding along the membrane toward
+// another quarter does not cross, so you can't bounce back and forth
+// between two arenas. With no arena beyond, the membrane is solid.
+function handleMembrane(game, moveX, moveY) {
+  const { player } = game;
+  const arenaRadius = TUNING.arena.radius;
+  const d = Math.hypot(player.x, player.y);
+  if (d <= arenaRadius - player.radius) return;
+  const direction = exitDirection(player.x, player.y);
+  const next = neighbour(game.world, game.cell, direction);
+  const pushing = { east: moveX > 0, west: moveX < 0, south: moveY > 0, north: moveY < 0 }[direction];
+  if (next && pushing) {
+    const entry = entryPosition(player.x, player.y, direction, arenaRadius, TUNING.world.entryInset);
+    startTransition(game, next, entry, 'cross');
+  }
+  const bounce = next ? TUNING.arena.edgeBounce : TUNING.world.solidBounce;
+  constrainToArena(player, player.radius, arenaRadius, bounce);
+}
+
+function clearPool(pool) {
+  for (const item of pool.items) pool.release(item);
+}
+
+function enterArena(game, cell, entry, kind) {
+  const { player } = game;
+  if (kind === 'cross') {
+    game.history.push(game.cell);
+    if (game.history.length > TUNING.world.historyLimit) game.history.shift();
+  }
+  game.cell = { ...cell };
+  game.world.visited.add(cellKey(cell));
+  game.arenaId++;
+
+  game.enemies.length = 0;
+  clearPool(game.playerShots);
+  clearPool(game.enemyShots);
+  clearPool(game.pickups);
+  clearPool(game.pops);
+
+  player.x = player.prevX = entry.x;
+  player.y = player.prevY = entry.y;
+  if (kind === 'eject') {
+    player.vx = 0;
+    player.vy = 0;
+    player.invuln = TUNING.world.ejectInvulnSeconds;
+    player.blink = TUNING.world.ejectInvulnSeconds;
+  }
+  for (const d of player.drones) {
+    d.x = d.prevX = player.x;
+    d.y = d.prevY = player.y;
+  }
+
+  game.spawner = createSpawner(rosterFor(difficultyOf(game.world, cell), ROSTERS));
+  updateSpawner(game.spawner, game.enemies, game.spawnEnemy, TUNING.spawning.respawnSeconds, 0, true);
+}
+
+// The game pauses during the fade; the arena swaps at its midpoint.
+function advanceTransition(game, dt) {
+  const tr = game.transition;
+  const duration = TUNING.world.transitionSeconds;
+  tr.t += dt;
+  if (!tr.swapped && tr.t >= duration / 2) {
+    enterArena(game, tr.cell, tr.entry, tr.kind);
+    tr.swapped = true;
+  }
+  if (tr.t >= duration) game.transition = null;
+}
+
+// How dark the screen is: 0 normally, rising to 1 at the swap.
+export function fadeAmount(game) {
+  if (!game.transition) return 0;
+  const half = TUNING.world.transitionSeconds / 2;
+  return Math.max(0, 1 - Math.abs(game.transition.t - half) / half);
 }
 
 // Touching enemies are pushed out of the player. Harmful ones deal their
@@ -160,14 +261,20 @@ export function grantBubbles(game, amount) {
 }
 
 // `controls`: moveX, moveY (-1..1), aimX, aimY (world units), fire (bool).
-// Does nothing while a class choice is pending.
+// Does nothing while a class choice is pending, and only runs the fade
+// while moving between arenas.
 export function updateGame(game, controls, dt) {
   if (game.pendingChoice) return;
   const { player } = game;
   const arenaRadius = TUNING.arena.radius;
   game.time += dt;
+  if (game.transition) {
+    advanceTransition(game, dt);
+    return;
+  }
 
   updatePlayer(player, controls.moveX, controls.moveY, controls.aimX, controls.aimY, TUNING, dt);
+  handleMembrane(game, controls.moveX, controls.moveY);
   const weapon = WEAPONS[player.weapon];
   const shots = updateTrigger(player.trigger, controls.fire, weapon, dt);
   for (let i = 0; i < shots; i++) {

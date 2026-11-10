@@ -65,6 +65,14 @@ export const TUNING = {
     radius: 1000,
     edgeBounce: 0.3, // share of outward speed returned when hitting the membrane
   },
+  world: {
+    size: 7, // arenas per side
+    transitionSeconds: 0.4, // fade between arenas; the game pauses meanwhile
+    entryInset: 120, // how far inside the membrane you appear in the next arena
+    historyLimit: 64, // arenas remembered for ejection
+    solidBounce: 0.6, // share of outward speed returned by an outer, solid membrane
+    ejectInvulnSeconds: 2, // immunity after being ejected at 0 bubbles
+  },
   lighting: {
     playerGlowRadius: 280,
     playerGlowAlpha: 0.1,
@@ -87,5 +95,6 @@ export const PALETTE = {
   pickup: '#ffe58a',
   danger: '#ff4d2e',
   membrane: '#2fd3c7',
+  wall: '#6f8597', // solid outer membranes
   speck: '#9fd8ff',
 };

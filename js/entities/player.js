@@ -1,6 +1,6 @@
 import { classRadius } from '../data/classes.js';
 import { TUNING } from '../data/tuning.js';
-import { stepMovement, constrainToArena, turnToward } from '../systems/movement.js';
+import { stepMovement, turnToward } from '../systems/movement.js';
 import { createTrigger } from '../systems/weapons.js';
 
 export function createPlayer(cls) {
@@ -59,8 +59,8 @@ export function updatePlayer(player, moveX, moveY, aimX, aimY, tuning, dt) {
   player.morph = Math.max(0, player.morph - dt);
 
   const p = tuning.player;
+  // The arena membrane is handled by the game: it can be crossed or solid.
   stepMovement(player, moveX, moveY, player.move, dt);
-  constrainToArena(player, player.radius, tuning.arena.radius, tuning.arena.edgeBounce);
 
   if (Math.hypot(player.vx, player.vy) > p.hullTurnMinSpeed) {
     const travel = Math.atan2(player.vy, player.vx);

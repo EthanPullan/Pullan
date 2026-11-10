@@ -4,12 +4,14 @@ import { createFixedStep, startLoop } from './loop.js';
 import { createInput } from './input.js';
 import { createRng, seedFromQuery } from './rng.js';
 import { createCamera, updateCamera, screenToWorld } from './camera.js';
-import { createGame, updateGame, chooseClass, grantBubbles } from './game.js';
+import { createGame, updateGame, chooseClass, grantBubbles, fadeAmount } from './game.js';
+import { difficultyOf } from './world.js';
 import { clearSpriteCache } from './render/tank.js';
 import { createSpecks } from './render/background.js';
 import { renderScene } from './render/scene.js';
 import { drawHud } from './ui/hud.js';
 import { createChoiceOverlay } from './ui/choice.js';
+import { drawMinimap } from './ui/minimap.js';
 import { createDebug, tickFps, drawDebugText } from './ui/debug.js';
 
 const canvas = document.getElementById('game');
@@ -46,6 +48,7 @@ if (query.has('test')) window.__test = { game, camera, view, chooseClass };
 
 const controls = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, fire: false };
 let lastAlpha = 0;
+let cameraArena = game.arenaId;
 
 function axis(negative, positive) {
   return (input.isDown(positive) ? 1 : 0) - (input.isDown(negative) ? 1 : 0);
@@ -59,6 +62,12 @@ function step() {
   controls.aimY = aim.y;
   controls.fire = input.mouse.left;
   updateGame(game, controls, dt);
+  // On arrival in a new arena the camera jumps with the player.
+  if (game.arenaId !== cameraArena) {
+    cameraArena = game.arenaId;
+    camera.x = camera.prevX = game.player.x;
+    camera.y = camera.prevY = game.player.y;
+  }
   updateCamera(
     camera, game.player.x, game.player.y,
     input.mouse.x - view.w / 2, input.mouse.y - view.h / 2,
@@ -98,12 +107,20 @@ function render(alpha) {
   renderScene(ctx, game, cam, view, specks, alpha, debug.enabled);
 
   ctx.setTransform(view.pxPerUnit, 0, 0, view.pxPerUnit, 0, 0);
+  const fade = fadeAmount(game);
+  if (fade > 0) {
+    ctx.fillStyle = `rgba(3, 13, 24, ${fade})`;
+    ctx.fillRect(0, 0, view.w, view.h);
+  }
   drawHud(ctx, game, view, PALETTE);
+  drawMinimap(ctx, game, view, PALETTE);
   if (debug.enabled) {
     const { player } = game;
     drawDebugText(ctx, [
       `fps      ${debug.fps.toFixed(0)}`,
       `seed     ${seed}`,
+      `arena    ${game.cell.col},${game.cell.row}  difficulty ${difficultyOf(game.world, game.cell)}`
+        + `  history ${game.history.length}`,
       `entities enemies ${game.enemies.length}`,
       `pools    shots ${game.playerShots.activeCount}/${game.playerShots.capacity}`
         + `, enemy shots ${game.enemyShots.activeCount}/${game.enemyShots.capacity}`,

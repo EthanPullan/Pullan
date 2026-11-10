@@ -7,6 +7,7 @@ import { drawSpecks } from './background.js';
 import { drawPops, drawProjectiles, drawPickups } from './effects.js';
 import { drawCollisionCircle } from '../ui/debug.js';
 import { rgba } from './color.js';
+import { solidSides } from '../world.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -44,7 +45,7 @@ export function renderScene(ctx, game, cam, view, specks, alpha, showDebug) {
   const py = lerp(player.prevY, player.y, alpha);
 
   worldTransform();
-  drawArena(ctx, TUNING.arena.radius, game.time, PALETTE);
+  drawArena(ctx, TUNING.arena.radius, game.time, PALETTE, solidSides(game.world, game.cell));
 
   // Background specks are in screen space, over the water and under the tanks.
   ctx.setTransform(s, 0, 0, s, 0, 0);
