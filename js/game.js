@@ -21,6 +21,7 @@ import { evaluateEvolution } from './systems/evolution.js';
 import { updateDrones } from './systems/drones.js';
 import { constrainToArena } from './systems/movement.js';
 import { updateAbility } from './systems/abilities.js';
+import { createGrid, rebuildGrid, nearby } from './systems/spatial.js';
 import { createParticle, spawnRing, spawnDots, updateParticles } from './systems/particles.js';
 
 const combat = TUNING.combat;
@@ -28,6 +29,9 @@ const pickupSettings = TUNING.pickups;
 // Enemy types that spawn and refill as a whole pack.
 const PACKS = Object.values(ENEMIES).filter((e) => e.groupSize).map((e) => e.id);
 const PACK_SPREAD = 80;
+// Grid cell for finding enemies close enough to push apart; it must cover
+// the widest separation range (two of the largest bodies plus padding).
+export const SEPARATION_CELL = 200;
 
 export function createGame(rng) {
   const player = createPlayer(CLASSES[START_CLASS]);
@@ -55,6 +59,7 @@ export function createGame(rng) {
     path: {}, // class chosen at each tier, restored when re-evolving
     pendingChoice: null, // class ids to choose between; the game pauses until one is picked
     enemies: [],
+    enemyGrid: createGrid(SEPARATION_CELL),
     playerShots: createPool(combat.projectilePoolSize, createProjectile),
     enemyShots: createPool(combat.enemyShotPoolSize, createProjectile),
     pickups: createPool(pickupSettings.poolSize, createPickup),
@@ -64,6 +69,8 @@ export function createGame(rng) {
   // Event handlers are made once here, so the update loop allocates none.
   // Adds `count` enemies of a type at one random point away from the player;
   // packs are scattered a little around it.
+  // The enemies near `e`, for steering apart (see systems/spatial.js).
+  game.neighbours = (e) => nearby(game.enemyGrid, e.x, e.y);
   game.spawnEnemy = (id, count = 1) => {
     const at = spawnPoint(player, TUNING.arena.radius, TUNING.spawning.edgeMargin,
       TUNING.spawning.minDistanceFromPlayer, rng);
@@ -201,6 +208,16 @@ function executeAttack(game, e, attack) {
 export function debugSpawn(game, id, distance = 350) {
   const { player } = game;
   addEnemy(game, ENEMIES[id], player.x + Math.cos(player.aim) * distance, player.y + Math.sin(player.aim) * distance);
+}
+
+// Debug stress test: adds `count` enemies of every roster type, in turn,
+// scattered around the arena away from the player.
+export function debugStress(game, count) {
+  const types = Object.keys(ROSTERS[ROSTERS.length - 1]);
+  for (let i = 0; i < count; i++) {
+    const at = spawnPoint(game.player, TUNING.arena.radius, TUNING.spawning.edgeMargin, 250, game.rng);
+    addEnemy(game, ENEMIES[types[i % types.length]], at.x, at.y);
+  }
 }
 
 // Dismisses the victory screen; play continues.
@@ -567,6 +584,7 @@ export function updateGame(game, controls, dt) {
     sound(game, 'ability');
   }
 
+  rebuildGrid(game.enemyGrid, game.enemies);
   for (const e of game.enemies) updateEnemy(e, game, dt);
   resolveContacts(game);
   if (cls.drones) updateDrones(player, cls.drones, game.enemies, game.onDroneHit, dt);

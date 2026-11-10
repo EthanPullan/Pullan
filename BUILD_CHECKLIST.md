@@ -294,10 +294,10 @@ to act on.
 
 ## Phase 11: Performance
 
-- [ ] Debug key spawns 300 enemies.
-- [ ] Profile first. Record the top three costs in the log before changing
+- [x] Debug key spawns 300 enemies.
+- [x] Profile first. Record the top three costs in the log before changing
       anything.
-- [ ] Fix only what the profile shows, then record the result.
+- [x] Fix only what the profile shows, then record the result.
 - [ ] Meets the performance budget in the starting numbers.
 
 **Gate (self-check):** before and after numbers written to the log.
@@ -711,4 +711,55 @@ Additions and choices not in the checklist:
 
 Not verified: real browsers with storage blocked (the code guards every
 storage call, but only normal storage was exercised).
+
+### Session 9: Phase 11
+
+All numbers are from headless Chromium at 1280×720, which draws with the
+CPU (no graphics card). They show what changed, but not what a laptop with
+a graphics card will reach. Scenarios: a scripted Needlejet (the
+fastest-firing weapon) that can't be hurt, sweeping fire across an arena
+with extra enemies. Spawned counts grow because carriers summon and
+mine-layers drop mines: "150" averages about 220 enemies, "300" about 475.
+The budget case tops particles up to about 400.
+
+**Profile before changes** (300 enemies, CPU profile of the main thread):
+1. `(program)` 51%: the browser's own work outside the game's code, mostly
+   rasterising the canvas in software.
+2. `separation` (steering enemies apart) 37%, about three quarters of all
+   game-code time: every enemy checked every other enemy, about 228,000
+   checks per step.
+3. Garbage collection 1.8%, then `updateEnemy` 1.4%.
+
+A follow-up experiment switched off one drawing layer at a time under the
+budget load (50.1 fps with everything): enemies 60.0, particles 56.9,
+vignette 55.7, tank highlights 54.8, player glow 52.2.
+
+**Fixes, each targeting a measured cost:**
+- Separation now looks only at enemies in nearby cells of a grid rebuilt
+  each step (`js/systems/spatial.js`). A test confirms the result is
+  identical to checking every pair.
+- Enemies and particles off screen are not drawn. Attack warnings are still
+  drawn for every enemy, since an aim line can reach in from off screen.
+- Particles are drawn in batches by kind, colour and one of 8 fade steps:
+  about 30 fills instead of up to 400.
+
+**Results** (same scenarios, measured against a copy of the code without
+the fixes):
+
+| Scenario | fps before → after | update per step | draw per frame |
+|---|---|---|---|
+| Empty arena | 60 → 60 | 0.08 → 0.08 ms | 0.35 → 0.36 ms |
+| Budget: 150 + 400 particles | 43.9 → 51.3 to 52.1 | 1.75 → 0.72 ms | 2.17 → 1.36 ms |
+| Stress: 300 enemies | 15.2 → 26.0 | 6.93 → 2.09 ms | 3.40 → 2.49 ms |
+
+The game's own work for the budget case is now about 2 ms of the 16.7 ms
+frame. What remains is the browser rasterising in software; the profile
+can't break that down further, and on a graphics card it should be much
+cheaper. Not changed: tank highlights, the vignette and the player glow
+each cost a few fps here, but removing them would change the look, and
+there is no evidence yet that they matter on real hardware.
+
+The budget item stays unticked: it needs a measurement on a real laptop.
+F3 now shows fps with update and draw times in milliseconds, and P (with
+F3 open) adds 300 enemies.
 

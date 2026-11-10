@@ -90,7 +90,7 @@ function updatePart(e) {
 
 function steer(e, world, dt) {
   const { def } = e;
-  const { player, enemies, rng } = world;
+  const { player, rng } = world;
   const steerSettings = TUNING.steering;
   const arenaRadius = TUNING.arena.radius;
 
@@ -103,7 +103,7 @@ function steer(e, world, dt) {
     const holding = def.stopToAttack && e.attack.active;
     if (e.stun <= 0 && !holding) {
       const want = desiredVelocity(e, player, rng, dt);
-      const apart = separation(e, enemies, steerSettings.separationPadding);
+      const apart = separation(e, world.neighbours(e), steerSettings.separationPadding);
       const inward = containment(e, arenaRadius, steerSettings.edgeMargin);
       // A wanderer turned back by the edge keeps its new heading.
       if ((def.behaviour === 'wander' || def.behaviour === 'flee') && (inward.x || inward.y)) {
@@ -129,7 +129,7 @@ function steer(e, world, dt) {
   }
 }
 
-// `world` is the game: player, enemies, rng, `executeAttack(e, attack)`,
+// `world` is the game: player, rng, `neighbours(e)`, `executeAttack(e, attack)`,
 // `onAttackStart(e, attack)` and `onPhaseChange(e)`.
 export function updateEnemy(e, world, dt) {
   const { def } = e;

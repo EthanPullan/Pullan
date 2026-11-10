@@ -12,6 +12,16 @@ import { windupProgress } from '../systems/attacks.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
+// Extra room around the view so sprite glows and fast movers between
+// frames are never clipped at the edge.
+const CULL_MARGIN = 40;
+
+// Whether a circle at (x, y) can be seen from camera `cam`.
+export function onScreen(x, y, radius, cam, view) {
+  const r = radius + CULL_MARGIN;
+  return Math.abs(x - cam.x) < view.w / 2 + r && Math.abs(y - cam.y) < view.h / 2 + r;
+}
+
 function easeOutBack(t) {
   const c1 = 1.70158;
   const u = t - 1;
@@ -113,7 +123,10 @@ export function renderScene(ctx, game, cam, view, backdrop, alpha, showDebug) {
   drawGlow(ctx, px, py, TUNING.lighting.playerGlowRadius, PALETTE.player, TUNING.lighting.playerGlowAlpha);
   drawPickups(ctx, game.pickups, alpha, PALETTE.pickup, TUNING.pickups);
 
+  // Only enemies that could appear on screen are drawn (warnings above are
+  // drawn for all, since an aim line can reach in from off screen).
   for (const e of game.enemies) {
+    if (!onScreen(e.x, e.y, e.radius, cam, view)) continue;
     drawTank(
       ctx, e.def, enemyColor(e),
       lerp(e.prevX, e.x, alpha), lerp(e.prevY, e.y, alpha),
@@ -124,7 +137,7 @@ export function renderScene(ctx, game, cam, view, backdrop, alpha, showDebug) {
   drawWarnings(ctx, game, alpha);
   drawProjectiles(ctx, game.enemyShots, alpha, PALETTE.danger);
   drawProjectiles(ctx, game.playerShots, alpha, PALETTE.player);
-  drawParticles(ctx, game.particles, alpha);
+  drawParticles(ctx, game.particles, alpha, cam, view);
 
   drawDrones(ctx, player, alpha);
   drawShield(ctx, player, px, py, game.time);

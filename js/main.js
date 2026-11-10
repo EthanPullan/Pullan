@@ -6,7 +6,7 @@ import { createInput } from './input.js';
 import { createRng, seedFromQuery } from './rng.js';
 import { createCamera, updateCamera, screenToWorld } from './camera.js';
 import {
-  createGame, updateGame, chooseClass, grantBubbles, fadeAmount, debugSpawn, dismissVictory, loadGame,
+  createGame, updateGame, chooseClass, grantBubbles, fadeAmount, debugSpawn, dismissVictory, loadGame, debugStress,
 } from './game.js';
 import { serialize, parseSave, parseSettings } from './save.js';
 import { nextScreen } from './screens.js';
@@ -110,6 +110,7 @@ const stepper = createFixedStep(1 / TUNING.sim.stepHz, TUNING.sim.maxFrameSecond
 const dt = 1 / TUNING.sim.stepHz;
 
 const controls = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, fire: false, ability: false };
+const timing = { update: 0, draw: 0 }; // milliseconds, shown in the F3 overlay
 let lastAlpha = 0;
 
 // A fresh run. Uses the `?seed=` from the address if there is one, so a
@@ -271,6 +272,7 @@ function handleDebugKeys() {
   if (input.consume('Equal') && debug.enabled) grantBubbles(game, 10);
   if (input.consume('Minus') && debug.enabled) grantBubbles(game, -10);
   if (input.consume('KeyB') && debug.enabled) spawnMenu.toggle();
+  if (input.consume('KeyP') && debug.enabled) debugStress(game, 300);
   if (!debug.enabled) spawnMenu.hide();
 }
 
@@ -281,6 +283,7 @@ if (query.has('test')) {
     get game() { return game; },
     get screen() { return screen; },
     get settings() { return settings; },
+    timing, debugStress,
     camera, view, chooseClass, debugSpawn, audio,
   };
 }
@@ -345,7 +348,7 @@ function render(alpha) {
   if (debug.enabled) {
     const { player } = game;
     drawDebugText(ctx, [
-      `fps      ${debug.fps.toFixed(0)}`,
+      `fps      ${debug.fps.toFixed(0)}   update ${timing.update.toFixed(2)} ms   draw ${timing.draw.toFixed(2)} ms`,
       `seed     ${seed}   screen ${screen}`,
       `arena    ${game.cell.col},${game.cell.row}  difficulty ${difficultyOf(game.world, game.cell)}`
         + `  history ${game.history.length}`,
@@ -355,7 +358,7 @@ function render(alpha) {
       `         pickups ${game.pickups.activeCount}/${game.pickups.capacity}`
         + `, particles ${game.particles.activeCount}/${game.particles.capacity}`,
       `class    ${player.classId}  path ${JSON.stringify(game.path)}`,
-      `bubbles  ${player.bubbles}  = / - to add or remove 10, B spawn menu`,
+      `bubbles  ${player.bubbles}  = / - to add or remove 10, B spawn menu, P add 300 enemies`,
       `bosses   beaten ${[...game.defeated].join(', ') || 'none'}`,
       `speed    ${Math.hypot(player.vx, player.vy).toFixed(0)}`,
       `position ${player.x.toFixed(0)}, ${player.y.toFixed(0)}`,
@@ -372,13 +375,20 @@ startLoop((elapsed) => {
 
   // The simulation runs only while playing. A step can raise an evolution
   // choice or the victory screen; the next frame switches to it.
+  const t0 = performance.now();
+  let steps = 0;
   if (screen === 'playing') {
-    const { steps, alpha } = stepper.advance(elapsed);
-    for (let i = 0; i < steps && !game.pendingChoice && !game.victoryPending; i++) step();
-    lastAlpha = alpha;
+    const advanced = stepper.advance(elapsed);
+    for (; steps < advanced.steps && !game.pendingChoice && !game.victoryPending; steps++) step();
+    lastAlpha = advanced.alpha;
     if (game.saveDue) saveRun();
   }
   for (const s of game.sounds) audio.play(s.type, s.size);
   game.sounds.length = 0;
+  const t1 = performance.now();
   render(lastAlpha);
+  const t2 = performance.now();
+  // Smoothed cost of one simulation step and of drawing one frame.
+  if (steps > 0) timing.update += ((t1 - t0) / steps - timing.update) * 0.05;
+  timing.draw += (t2 - t1 - timing.draw) * 0.05;
 });
