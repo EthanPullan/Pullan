@@ -166,15 +166,15 @@ particles.
 
 ## Phase 2: Movement and camera
 
-- [ ] Player moves with acceleration and drag from the starting numbers.
-- [ ] Diagonal movement is not faster than straight movement.
-- [ ] Turret rotates toward the cursor independently of the hull.
-- [ ] Tank drawn from its circle list with a radial gradient and highlight,
+- [x] Player moves with acceleration and drag from the starting numbers.
+- [x] Diagonal movement is not faster than straight movement.
+- [x] Turret rotates toward the cursor independently of the hull.
+- [x] Tank drawn from its circle list with a radial gradient and highlight,
       cached to an offscreen canvas per class.
-- [ ] Camera follows with smoothing and a slight lead toward the cursor.
-- [ ] One arena with a visible membrane; the player cannot leave it yet.
-- [ ] Parallax background specks so motion is readable against open water.
-- [ ] Test: speed converges on the configured top speed and never exceeds it.
+- [x] Camera follows with smoothing and a slight lead toward the cursor.
+- [x] One arena with a visible membrane; the player cannot leave it yet.
+- [x] Parallax background specks so motion is readable against open water.
+- [x] Test: speed converges on the configured top speed and never exceeds it.
 
 **Gate (human):** the owner approves how movement feels. Expect tuning rounds;
 offer the three or four constants that matter and what each one changes.
@@ -319,7 +319,50 @@ spiked. Repeat data changes until they are satisfied.
 
 Ideas noticed along the way that are outside the agreed scope. One line each.
 
+- A short controls hint on first load (WASD, mouse, F3) until the Phase 8 title screen exists.
+- Tanks are about 50 units across on a 720-unit screen. If they feel small, a camera zoom constant is a one-line addition.
+
 ## Log
 
 One entry per session: phase, what was built, what was verified and how, what
 was not verified, numbers changed from this file and why.
+
+### Session 1: Phases 0 to 2
+
+The owner asked for Phases 0 to 2 in one session, then a stop at the Phase 2
+feel gate, with commits pushed to `main`.
+
+**Phase 0.** Working title in use: Glowfathom (alternatives: Lumen Drift,
+Bubblewake). Visual idea: the deep sea is dark and the only light comes from
+creatures, so every tank glows and lights the water around it. Palette is in
+`js/data/tuning.js`. Class names and sketches are in `js/data/classes.js`:
+Mote; Skitter → Spindrift, Needlejet; Barnacle → Depthcharge, Harpoon;
+Brood → Shoal, Halo. Gate still open: the owner has not picked a title or
+approved names and palette.
+
+**Phase 1.** Built as listed. Verified in headless Chromium: no console
+errors, overlay toggles, canvas re-fits on resize.
+
+**Phase 2.** Built as listed. Verified in headless Chromium: holding a
+diagonal reaches 220 units/s exactly, releasing glides, driving into the
+membrane stops the tank at the edge, all 10 classes render.
+
+Additions not in the checklist:
+- `js/render/` folder for drawing code (tank sprites, arena, background), so
+  rendering stays out of `entities/` and `systems/`.
+- `[` and `]` cycle through the 10 classes while the F3 overlay is open, so
+  the Phase 0 sketches can be reviewed in game.
+- `releaseDrag` (2.5) controls glide separately from acceleration. The
+  checklist's single model stops in about 55 units; this glides about 90.
+- The player's glow (part of the Phase 0 visual idea): one gradient.
+
+Not verified: how movement feels, high-density displays, and refresh rates
+other than 60 Hz in a real browser (the loop's handling of 144 Hz is covered
+by a unit test only).
+
+Movement constants to tune, all in `js/data/tuning.js`:
+- `player.topSpeed` (220): cruising speed.
+- `player.accel` (900): how quickly you reach it.
+- `player.releaseDrag` (2.5): glide after letting go; lower is floatier.
+- `camera.follow` (6) and `camera.lead` (0.22): how tightly the view tracks
+  you and how far it leans toward the cursor.
