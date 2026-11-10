@@ -194,15 +194,15 @@ offer the three or four constants that matter and what each one changes.
 
 ## Phase 4: Enemies and the bubble economy
 
-- [ ] Enemy schema: body circles, health, speed, weapon, behaviour, drop count.
-- [ ] Drifter, Chaser and Strafer behaviours.
-- [ ] Steering: seek, keep-distance, and separation so enemies do not stack.
-- [ ] Enemies stay inside the arena.
-- [ ] Dead enemies burst into pickups that scatter, slow and fade.
-- [ ] Pickups are drawn in and collected; the total is shown on screen.
-- [ ] Player damage removes bubbles and spills half as pickups.
-- [ ] 1 s of invulnerability after a hit, shown by blinking.
-- [ ] Tests: drop counts; spill arithmetic; separation pushes overlapping
+- [x] Enemy schema: body circles, health, speed, weapon, behaviour, drop count.
+- [x] Drifter, Chaser and Strafer behaviours.
+- [x] Steering: seek, keep-distance, and separation so enemies do not stack.
+- [x] Enemies stay inside the arena.
+- [x] Dead enemies burst into pickups that scatter, slow and fade.
+- [x] Pickups are drawn in and collected; the total is shown on screen.
+- [x] Player damage removes bubbles and spills half as pickups.
+- [x] 1 s of invulnerability after a hit, shown by blinking.
+- [x] Tests: drop counts; spill arithmetic; separation pushes overlapping
       enemies apart.
 
 **Gate (human):** the owner fights a mixed group and judges whether the loop
@@ -396,4 +396,35 @@ Additions not in the checklist:
   Phase 5 gives each class its weapon.
 
 Not verified: how firing feels; whether 8 recoil reads as "slight".
+
+### Session 3: Phases 4 and 5
+
+The owner asked for Phases 4 and 5 together, so the Phase 4 fun gate is
+deferred to the end of Phase 5; both get played together.
+
+**Phase 4.** Built as listed. Verified in headless Chromium with a scripted
+player (`?test` exposes game state for this): over 25 s enemies were killed,
+dropped bubbles that were collected, and were replaced; strafers fired; no
+enemy left the arena; no console errors. A second script gave the player 10
+bubbles and stood still: strafer shots cost 1 bubble and spilled none,
+chaser contact cost 2 and spilled 1, spilled bubbles waited 1 s and were
+then collectable, and each hit gave 1 s of blinking invulnerability.
+
+Additions not in the checklist:
+- `js/game.js` now holds world state and the fixed-step update, and
+  `js/render/scene.js` the drawing, so `main.js` is only browser wiring.
+- `js/data/shapes.js` holds the circle helpers shared by classes and enemies.
+- The arena keeps a fixed population (4 drifters, 3 chasers, 2 strafers),
+  replacing a missing enemy after 4 s. Phase 6 replaces this with rosters.
+- Values the checklist did not give: chaser contact damage 2; strafer
+  weapon (0.8 shots/s, 300 units/s, 1 damage, 550 range); `knockback` on
+  weapons; spilled bubbles fly 280 to 420 units/s and wait 1 s.
+- Touching chasers are thrown back and stunned for 0.5 s so they cannot sit
+  on the player.
+- At 0 bubbles a hit does nothing but trigger invulnerability; ejection to
+  the previous arena is Phase 6.
+- The target dummies from Phase 3 are removed.
+
+Not verified: whether the loop is fun; whether pickups (radius 5) are easy
+enough to see.
 

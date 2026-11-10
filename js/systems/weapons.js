@@ -44,5 +44,6 @@ export function fireWeapon(pool, weapon, x, y, angle, muzzle, rng) {
     p.life = weapon.lifetime;
     p.damage = weapon.damage;
     p.radius = weapon.radius;
+    p.knockback = weapon.knockback;
   }
 }

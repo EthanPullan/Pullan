@@ -1,7 +1,7 @@
 import { circlesOverlap } from './collision.js';
 
 export function createProjectile() {
-  return { x: 0, y: 0, prevX: 0, prevY: 0, vx: 0, vy: 0, life: 0, damage: 0, radius: 0 };
+  return { x: 0, y: 0, prevX: 0, prevY: 0, vx: 0, vy: 0, life: 0, damage: 0, radius: 0, knockback: 0 };
 }
 
 // Moves projectiles, hits the first live target they overlap, and removes

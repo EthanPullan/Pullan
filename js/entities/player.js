@@ -11,6 +11,10 @@ export function createPlayer(cls) {
     classId: null, radius: 0,
     muzzle: 0, // distance from centre to the gun tip
     trigger: createTrigger(),
+    alive: true, // lets enemy shots treat the player like any other target
+    bubbles: 0,
+    invuln: 0, // seconds of immunity left
+    blink: 0, // seconds of damage blinking left
   };
   setPlayerClass(player, cls);
   return player;
@@ -33,6 +37,8 @@ export function updatePlayer(player, moveX, moveY, aimX, aimY, tuning, dt) {
   player.prevY = player.y;
   player.prevHeading = player.heading;
   player.prevAim = player.aim;
+  player.invuln = Math.max(0, player.invuln - dt);
+  player.blink = Math.max(0, player.blink - dt);
 
   const p = tuning.player;
   stepMovement(player, moveX, moveY, p, dt);

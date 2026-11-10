@@ -14,6 +14,8 @@ export const TUNING = {
     releaseDrag: 2.5, // how fast you slow down with no keys held; lower glides further
     hullTurnRate: 6, // rad/s the hull turns toward the direction of travel
     hullTurnMinSpeed: 15, // below this speed the hull holds its heading
+    pickupRadius: 120, // pickups closer than this are pulled in
+    invulnSeconds: 1, // after taking a hit
   },
   camera: {
     follow: 6, // higher follows more tightly
@@ -22,11 +24,38 @@ export const TUNING = {
   },
   combat: {
     projectilePoolSize: 512,
+    enemyShotPoolSize: 256,
+    contactKnockback: 260, // units/s a touching enemy is thrown back
+    contactStunSeconds: 0.5, // it drifts without steering for this long
     popPoolSize: 256,
     hitFlashSeconds: 0.1,
     shotPopSeconds: 0.18,
     deathPopSeconds: 0.35,
     deathPopScale: 1.4, // death ring size relative to the target's radius
+  },
+  pickups: {
+    poolSize: 512,
+    radius: 5,
+    lifetime: 12,
+    fadeSeconds: 3, // fades out over the end of its lifetime
+    drag: 3,
+    dropSpeedMin: 60, // scatter speed when an enemy bursts
+    dropSpeedMax: 160,
+    spillSpeedMin: 280, // scatter speed when the player is hit, flung past
+    spillSpeedMax: 420, // the pickup radius so they must be chased
+    spillCollectDelay: 1, // seconds before spilled bubbles can be collected
+    magnetAccel: 1800,
+    magnetMaxSpeed: 520,
+  },
+  spawning: {
+    respawnSeconds: 4, // a missing enemy is replaced after this long
+    minDistanceFromPlayer: 450,
+    edgeMargin: 80,
+  },
+  steering: {
+    separationPadding: 14, // enemies start pushing apart this far before touching
+    separationWeight: 1.6,
+    edgeMargin: 120, // enemies turn back this far inside the membrane
   },
   arena: {
     radius: 1000,
