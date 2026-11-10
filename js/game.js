@@ -43,6 +43,7 @@ export function createGame(rng) {
     player,
     playerTargets: [player], // what enemy shots can hit: the player and any drones
     kills: 0,
+    unlocked: new Set([START_CLASS]), // every form reached at least once, for the class tree
     defeated: new Set(), // ids of bosses beaten
     victoryPending: false, // true while the victory screen is up; the game pauses
     victoryShown: false,
@@ -405,6 +406,7 @@ function useAbility(game, ability, controls) {
 function changeClass(game, classId) {
   const { player } = game;
   setPlayerClass(player, CLASSES[classId]);
+  game.unlocked.add(classId);
   game.playerTargets = [player, ...player.drones];
   const evo = TUNING.evolution;
   player.morph = evo.morphSeconds;

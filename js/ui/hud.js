@@ -1,25 +1,28 @@
 import { rgba } from '../render/color.js';
 import { CLASSES } from '../data/classes.js';
 import { TUNING } from '../data/tuning.js';
-import { devolveBelow } from '../systems/evolution.js';
+import { progressScale } from '../systems/evolution.js';
 import { abilityReadiness } from '../systems/abilities.js';
 
-// Bubble count and current form in the top-right corner.
-// Drawn in logical screen units. Phase 8 replaces the text with a bar.
+// Top-right: bubble count, a progress bar toward the next form with a red
+// mark where you would devolve, and the ability cooldown. Drawn in logical
+// screen units.
+const BAR_WIDTH = 220;
+
 export function drawHud(ctx, game, view, palette) {
   const { player } = game;
+  const right = view.w - 24;
   const text = String(player.bubbles);
   ctx.save();
   ctx.font = '600 26px ui-rounded, system-ui, sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
-  const x = view.w - 24;
   const y = 34;
   ctx.fillStyle = '#e8fbff';
-  ctx.fillText(text, x, y);
+  ctx.fillText(text, right, y);
 
   const width = ctx.measureText(text).width;
-  const bx = x - width - 20;
+  const bx = right - width - 20;
   ctx.beginPath();
   ctx.arc(bx, y, 10, 0, Math.PI * 2);
   ctx.fillStyle = rgba(palette.pickup, 0.3);
@@ -29,19 +32,32 @@ export function drawHud(ctx, game, view, palette) {
   ctx.stroke();
 
   const cls = CLASSES[player.classId];
-  const rules = TUNING.evolution;
-  const parts = [cls.name];
-  const up = rules.thresholds[cls.tier + 1];
-  if (up !== undefined) parts.push(`evolves at ${up}`);
-  const down = devolveBelow(cls, rules);
-  if (down !== null) parts.push(`devolves below ${down}`);
-  ctx.font = '14px ui-rounded, system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(232, 251, 255, 0.7)';
-  ctx.fillText(parts.join('  ·  '), x, y + 28);
-
-  if (cls.ability) drawAbility(ctx, cls.ability, player.abilityState, x, y + 52, palette);
+  drawProgress(ctx, cls, player.bubbles, right, y + 26, palette);
+  if (cls.ability) drawAbility(ctx, cls.ability, player.abilityState, right, y + 74, palette);
   drawBossBar(ctx, game, view, palette);
   ctx.restore();
+}
+
+function drawProgress(ctx, cls, bubbles, right, top, palette) {
+  const scale = progressScale(cls, bubbles, TUNING.evolution);
+  const left = right - BAR_WIDTH;
+  ctx.font = '14px ui-rounded, system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#e8fbff';
+  ctx.fillText(cls.name, left, top);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(232, 251, 255, 0.65)';
+  ctx.fillText(scale.next === null ? 'final form' : `next form at ${scale.next}`, right, top);
+
+  const barY = top + 12;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.fillRect(left, barY, BAR_WIDTH, 8);
+  ctx.fillStyle = palette.pickup;
+  ctx.fillRect(left, barY, BAR_WIDTH * scale.fill, 8);
+  if (scale.devolveMark !== null) {
+    ctx.fillStyle = palette.danger;
+    ctx.fillRect(left + BAR_WIDTH * scale.devolveMark - 1, barY - 3, 2, 14);
+  }
 }
 
 // The right-click ability: its name and a bar that fills as it recharges.

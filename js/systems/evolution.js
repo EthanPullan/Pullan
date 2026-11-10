@@ -36,3 +36,19 @@ export function evaluateEvolution(classId, bubbles, path, classes, classList, ru
 export function devolveBelow(cls, rules) {
   return cls.parent ? rules.thresholds[cls.tier] * rules.devolveFraction : null;
 }
+
+// The HUD's progress bar, on a scale from 0 to the next form's threshold.
+// Final forms have no next threshold, so their scale runs to 1.5 times their
+// own. `fill` and `devolveMark` are fractions of the bar (mark is null for
+// tier 1, which can't devolve).
+export function progressScale(cls, bubbles, rules) {
+  const up = rules.thresholds[cls.tier + 1];
+  const max = up !== undefined ? up : rules.thresholds[cls.tier] * 1.5;
+  const down = devolveBelow(cls, rules);
+  return {
+    max,
+    next: up === undefined ? null : up,
+    fill: Math.min(1, bubbles / max),
+    devolveMark: down === null ? null : down / max,
+  };
+}

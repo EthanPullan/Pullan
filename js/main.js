@@ -1,5 +1,6 @@
 import { TUNING, PALETTE } from './data/tuning.js';
 import { CLASSES } from './data/classes.js';
+import { ENEMIES } from './data/enemies.js';
 import { createFixedStep, startLoop } from './loop.js';
 import { createInput } from './input.js';
 import { createRng, seedFromQuery } from './rng.js';
@@ -7,15 +8,16 @@ import { createCamera, updateCamera, screenToWorld } from './camera.js';
 import {
   createGame, updateGame, chooseClass, grantBubbles, fadeAmount, debugSpawn, dismissVictory,
 } from './game.js';
-import { ENEMIES } from './data/enemies.js';
+import { nextScreen } from './screens.js';
 import { difficultyOf } from './world.js';
 import { clearSpriteCache } from './render/tank.js';
 import { createSpecks } from './render/background.js';
 import { renderScene } from './render/scene.js';
 import { drawHud } from './ui/hud.js';
-import { createChoiceOverlay } from './ui/choice.js';
 import { drawMinimap } from './ui/minimap.js';
+import { createChoiceOverlay } from './ui/choice.js';
 import { createVictoryOverlay } from './ui/victory.js';
+import { createTitleScreen, createPauseMenu, createTreeView } from './ui/menus.js';
 import { createSpawnMenu } from './ui/spawnmenu.js';
 import { createDebug, tickFps, drawDebugText } from './ui/debug.js';
 
@@ -39,21 +41,154 @@ window.addEventListener('resize', resize);
 
 const query = new URLSearchParams(window.location.search);
 const input = createInput(canvas, view);
-const seed = seedFromQuery(window.location.search);
-const game = createGame(createRng(seed));
+let seed = seedFromQuery(window.location.search);
+let game = createGame(createRng(seed));
 // Visual-only randomness gets its own generator so it never shifts gameplay.
 const specks = createSpecks(createRng(seed ^ 0x9e3779b9), TUNING.background);
 const camera = createCamera(game.player.x, game.player.y);
+let cameraArena = game.arenaId;
 const debug = createDebug();
 const stepper = createFixedStep(1 / TUNING.sim.stepHz, TUNING.sim.maxFrameSeconds);
 const dt = 1 / TUNING.sim.stepHz;
 
-// `?test` exposes the game state to automated browser checks.
-if (query.has('test')) window.__test = { game, camera, view, chooseClass, debugSpawn };
-
 const controls = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, fire: false, ability: false };
 let lastAlpha = 0;
-let cameraArena = game.arenaId;
+
+// A fresh run. Uses the `?seed=` from the address if there is one, so a
+// seeded run restarts identically; otherwise a new seed.
+function newGame() {
+  seed = seedFromQuery(window.location.search);
+  game = createGame(createRng(seed));
+  camera.x = camera.prevX = game.player.x;
+  camera.y = camera.prevY = game.player.y;
+  cameraArena = game.arenaId;
+}
+
+// --- Screens ---------------------------------------------------------------
+
+let screen = 'title';
+
+const title = createTitleScreen(() => go('start'));
+const pauseMenu = createPauseMenu({
+  onResume: () => go('resume'),
+  onTree: () => go('tree'),
+  onRestart: () => go('restart'),
+});
+const tree = createTreeView(() => go('back'), PALETTE);
+const choice = createChoiceOverlay((classId) => pick(classId));
+const victory = createVictoryOverlay(() => go('continue'));
+const overlays = { title, paused: pauseMenu, tree, choosing: choice, victory };
+
+// So the pause menu can be reached with the mouse as well as Esc.
+const pauseButton = document.createElement('button');
+pauseButton.type = 'button';
+pauseButton.className = 'pause-button';
+pauseButton.title = 'Pause (Esc)';
+pauseButton.setAttribute('aria-label', 'Pause');
+pauseButton.textContent = '❚❚';
+pauseButton.addEventListener('click', () => go('pause'));
+document.body.appendChild(pauseButton);
+
+function showScreen() {
+  pauseButton.hidden = screen !== 'playing';
+  for (const [name, o] of Object.entries(overlays)) if (name !== screen) o.hide();
+  if (screen === 'title') title.show();
+  if (screen === 'paused') pauseMenu.show();
+  if (screen === 'tree') tree.show(game.unlocked, game.player.classId);
+  if (screen === 'choosing') choice.show(game.pendingChoice.map((id) => CLASSES[id]), PALETTE.player);
+  if (screen === 'victory') victory.show(game.kills);
+}
+
+// Moves to another screen if the move is allowed from this one, with any
+// side effect the move carries. Returns whether it happened.
+function go(action) {
+  const next = nextScreen(screen, action);
+  if (!next) return false;
+  if (action === 'restart') newGame();
+  if (action === 'continue') dismissVictory(game);
+  screen = next;
+  showScreen();
+  return true;
+}
+
+function pick(classId) {
+  if (screen !== 'choosing') return;
+  chooseClass(game, classId);
+  go('pick');
+}
+
+// Leaving the tab or window pauses the game.
+window.addEventListener('blur', () => go('pause'));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) go('pause');
+});
+
+// Keys are read every frame, whatever the screen, so a press made on one
+// screen can't fire later on another.
+function handleKeys() {
+  const esc = input.consume('Escape');
+  const enter = input.consume('Enter') | input.consume('Space');
+  const treeKey = input.consume('KeyT');
+  const restartKey = input.consume('KeyR');
+  const digits = [1, 2, 3].map((n) => input.consume(`Digit${n}`));
+
+  switch (screen) {
+    case 'title':
+      if (enter) go('start');
+      break;
+    case 'playing':
+      if (esc) go('pause');
+      else if (game.pendingChoice) go('choose');
+      else if (game.victoryPending) go('win');
+      break;
+    case 'paused':
+      if (esc) go('resume');
+      else if (treeKey) go('tree');
+      else if (restartKey) pauseMenu.restart();
+      break;
+    case 'tree':
+      if (esc || treeKey) go('back');
+      break;
+    case 'choosing': {
+      const index = digits.indexOf(true);
+      if (index >= 0 && index < game.pendingChoice.length) pick(game.pendingChoice[index]);
+      break;
+    }
+    case 'victory':
+      if (enter) go('continue');
+      break;
+    default:
+      break;
+  }
+}
+
+// --- Debug -----------------------------------------------------------------
+
+// Boss parts only make sense attached to a boss, so they aren't listed.
+const spawnMenu = createSpawnMenu(
+  Object.values(ENEMIES).filter((def) => def.behaviour !== 'part'),
+  (id) => debugSpawn(game, id),
+);
+
+function handleDebugKeys() {
+  if (input.consume('F3')) debug.enabled = !debug.enabled;
+  if (input.consume('Equal') && debug.enabled) grantBubbles(game, 10);
+  if (input.consume('Minus') && debug.enabled) grantBubbles(game, -10);
+  if (input.consume('KeyB') && debug.enabled) spawnMenu.toggle();
+  if (!debug.enabled) spawnMenu.hide();
+}
+
+// `?test` exposes the game to automated browser checks. Getters, because
+// restarting replaces the game.
+if (query.has('test')) {
+  window.__test = {
+    get game() { return game; },
+    get screen() { return screen; },
+    camera, view, chooseClass, debugSpawn,
+  };
+}
+
+// --- Simulation and drawing ------------------------------------------------
 
 function axis(negative, positive) {
   return (input.isDown(positive) ? 1 : 0) - (input.isDown(negative) ? 1 : 0);
@@ -81,47 +216,6 @@ function step() {
   );
 }
 
-const choice = createChoiceOverlay((classId) => {
-  chooseClass(game, classId);
-  choice.hide();
-});
-
-const victory = createVictoryOverlay(() => {
-  dismissVictory(game);
-  victory.hide();
-});
-
-// Boss parts only make sense attached to a boss, so they aren't listed.
-const spawnMenu = createSpawnMenu(
-  Object.values(ENEMIES).filter((def) => def.behaviour !== 'part'),
-  (id) => debugSpawn(game, id),
-);
-
-function handleVictory() {
-  const enter = input.consume('Enter');
-  if (!game.victoryPending) return;
-  if (!victory.visible) victory.show(game.kills);
-  else if (enter) {
-    dismissVictory(game);
-    victory.hide();
-  }
-}
-
-// Shows the choice cards when the game asks for one, and handles the
-// 1/2/3 keys. Digit presses are always consumed so a stale press made
-// during play can't pick a card the moment the screen opens.
-function handleChoice() {
-  const pressed = [1, 2, 3].map((n) => input.consume(`Digit${n}`));
-  const options = game.pendingChoice;
-  if (!options) return;
-  if (!choice.visible) choice.show(options.map((id) => CLASSES[id]), PALETTE.player);
-  const index = pressed.indexOf(true);
-  if (index >= 0 && index < options.length) {
-    chooseClass(game, options[index]);
-    choice.hide();
-  }
-}
-
 function render(alpha) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = PALETTE.abyss;
@@ -139,13 +233,15 @@ function render(alpha) {
     ctx.fillStyle = `rgba(3, 13, 24, ${fade})`;
     ctx.fillRect(0, 0, view.w, view.h);
   }
-  drawHud(ctx, game, view, PALETTE);
-  drawMinimap(ctx, game, view, PALETTE);
+  if (screen !== 'title') {
+    drawHud(ctx, game, view, PALETTE);
+    drawMinimap(ctx, game, view, PALETTE);
+  }
   if (debug.enabled) {
     const { player } = game;
     drawDebugText(ctx, [
       `fps      ${debug.fps.toFixed(0)}`,
-      `seed     ${seed}`,
+      `seed     ${seed}   screen ${screen}`,
       `arena    ${game.cell.col},${game.cell.row}  difficulty ${difficultyOf(game.world, game.cell)}`
         + `  history ${game.history.length}`,
       `entities enemies ${game.enemies.length}`,
@@ -162,21 +258,18 @@ function render(alpha) {
   }
 }
 
+showScreen();
+
 startLoop((elapsed) => {
   tickFps(debug, elapsed);
-  if (input.consume('F3')) debug.enabled = !debug.enabled;
-  if (input.consume('Equal') && debug.enabled) grantBubbles(game, 10);
-  if (input.consume('Minus') && debug.enabled) grantBubbles(game, -10);
-  if (input.consume('KeyB') && debug.enabled) spawnMenu.toggle();
-  if (!debug.enabled) spawnMenu.hide();
-  handleChoice();
-  handleVictory();
+  handleDebugKeys();
+  handleKeys();
 
-  // The simulation is paused while a choice or the victory screen is up.
-  const paused = () => game.pendingChoice || game.victoryPending;
-  if (!paused()) {
+  // The simulation runs only while playing. A step can raise an evolution
+  // choice or the victory screen; the next frame switches to it.
+  if (screen === 'playing') {
     const { steps, alpha } = stepper.advance(elapsed);
-    for (let i = 0; i < steps && !paused(); i++) step();
+    for (let i = 0; i < steps && !game.pendingChoice && !game.victoryPending; i++) step();
     lastAlpha = alpha;
   }
   render(lastAlpha);

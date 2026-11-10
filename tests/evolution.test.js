@@ -90,3 +90,16 @@ test('a total oscillating around a threshold changes class only once', () => {
   assert.equal(changes, 1);
   assert.equal(classId, 'skitter');
 });
+
+test('the HUD progress bar runs to the next form, marking the devolve point', async () => {
+  const { progressScale } = await import('../js/systems/evolution.js');
+  assert.deepEqual(progressScale(CLASSES.mote, 10, rules), { max: 20, next: 20, fill: 0.5, devolveMark: null });
+  const t2 = progressScale(CLASSES.skitter, 30, rules);
+  assert.equal(t2.max, 60);
+  assert.equal(t2.fill, 0.5);
+  assert.ok(Math.abs(t2.devolveMark - 16 / 60) < 1e-9);
+  const t3 = progressScale(CLASSES.halo, 200, rules);
+  assert.equal(t3.next, null);
+  assert.equal(t3.fill, 1);
+  assert.ok(Math.abs(t3.devolveMark - 48 / 90) < 1e-9);
+});

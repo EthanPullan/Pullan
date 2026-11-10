@@ -1,12 +1,12 @@
 // Shown once, when both bosses are beaten. Play continues afterwards.
 export function createVictoryOverlay(onContinue) {
   const root = document.createElement('div');
-  root.className = 'choice hidden';
+  root.className = 'overlay hidden';
   root.innerHTML = `
-    <div class="choice-panel">
+    <div class="overlay-panel">
       <h2>The deep is quiet</h2>
       <p class="victory-text"></p>
-      <button type="button" class="choice-button">Keep exploring</button>
+      <button type="button" class="overlay-button">Keep exploring</button>
     </div>`;
   document.body.appendChild(root);
   const text = root.querySelector('.victory-text');

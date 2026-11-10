@@ -258,13 +258,13 @@ six end classes feel distinct.
 
 ## Phase 8: Interface and game states
 
-- [ ] States: title, playing, paused, evolution choice, victory.
-- [ ] Heads-up display: bubble total, progress bar to the next threshold with
+- [x] States: title, playing, paused, evolution choice, victory.
+- [x] Heads-up display: bubble total, progress bar to the next threshold with
       the devolve mark, ability cooldown, minimap.
-- [ ] Title screen with controls; pause with resume and restart; class tree
+- [x] Title screen with controls; pause with resume and restart; class tree
       viewer showing unlocked classes.
-- [ ] Escape pauses; the game pauses itself when the tab loses focus.
-- [ ] Test: every state transition that should be possible is, and no others.
+- [x] Escape pauses; the game pauses itself when the tab loses focus.
+- [x] Test: every state transition that should be possible is, and no others.
 
 **Gate (self-check):** every screen reachable and escapable by keyboard and
 mouse; screenshot each one.
@@ -589,4 +589,37 @@ mine-layer and drop nothing. Speed is `clearedAccel` / `clearedMaxSpeed` in
 alive, all arriving once cleared, and mines not blocking; in headless
 Chromium a scripted Spindrift cleared arena 4,3 and the 11 bubbles left
 around it all arrived within 1.6 s.
+
+### Session 6: Phase 8
+
+**Phase 8.** Built as listed. Verified in headless Chromium, once using
+only the keyboard and once using only the mouse: every screen (title,
+playing, paused, class tree, evolution choice, victory) was entered and
+left, the game clock stayed frozen off the playing screen, restart needed a
+second press and reset the run, and losing window focus paused the game.
+After reaching Brood then Halo, the class tree showed Mote, Brood and Halo
+lit with Halo outlined. Screenshots of every screen were checked. No console
+errors. `tests/screens.test.js` checks all 10 allowed screen moves, refuses
+the other 26, and confirms every screen leads back to play.
+
+How it works: `js/screens.js` is a small table of allowed screen moves;
+`main.js` asks it before every move, so an impossible move (such as pausing
+during the evolution choice) is simply refused. The simulation only runs on
+the playing screen. Menus are HTML overlays in `js/ui/menus.js`.
+
+Additions and choices not in the checklist:
+- A pause button (bottom-left, playing screen only), because the checklist
+  asks for every screen to be reachable by mouse as well as keyboard.
+- Restart asks for a second press or click within 3 s ("Lose this run?
+  Press again"), so a stray click can't end a run.
+- The class tree is reached from the pause menu. A form counts as unlocked
+  once you have been it; locked forms show a dark outline and the bubbles
+  needed to reach them.
+- The progress bar runs from 0 to the next form's threshold (final forms:
+  to 1.5 times their own threshold), with a red mark at the devolve point.
+- Restart keeps the `?seed=` from the address, so seeded runs restart
+  identically.
+
+Not verified: how the screens look on small or unusual window sizes (the
+class tree needs about 860 pixels of width).
 
