@@ -2,8 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { stepMovement, constrainToArena, turnToward } from '../js/systems/movement.js';
 import { TUNING } from '../js/data/tuning.js';
+import { CLASSES, START_CLASS } from '../js/data/classes.js';
 
-const P = TUNING.player;
+const P = { ...TUNING.player, ...CLASSES[START_CLASS].stats };
 const DT = 1 / 60;
 const body = () => ({ x: 0, y: 0, vx: 0, vy: 0 });
 const speed = (b) => Math.hypot(b.vx, b.vy);

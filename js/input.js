@@ -5,12 +5,12 @@ const BLOCKED_KEYS = new Set(['F3', 'Space']);
 
 export function createInput(canvas, view) {
   const held = new Set();
-  const pressed = new Set();
+  const pressed = new Map(); // key code -> presses not yet consumed
   const mouse = { x: view.w / 2, y: view.h / 2, left: false, right: false };
 
   window.addEventListener('keydown', (e) => {
     if (BLOCKED_KEYS.has(e.code)) e.preventDefault();
-    if (!e.repeat) pressed.add(e.code);
+    if (!e.repeat) pressed.set(e.code, (pressed.get(e.code) || 0) + 1);
     held.add(e.code);
   });
   window.addEventListener('keyup', (e) => held.delete(e.code));
@@ -41,11 +41,12 @@ export function createInput(canvas, view) {
   return {
     mouse,
     isDown: (code) => held.has(code),
-    // True once per physical key press.
+    // True once per physical key press, even if several land in one frame.
     consume(code) {
-      const was = pressed.has(code);
-      pressed.delete(code);
-      return was;
+      const count = pressed.get(code) || 0;
+      if (count > 1) pressed.set(code, count - 1);
+      else pressed.delete(code);
+      return count > 0;
     },
   };
 }

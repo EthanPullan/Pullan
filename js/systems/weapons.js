@@ -24,19 +24,19 @@ export function updateTrigger(trigger, held, weapon, dt) {
 
 // Spawns one volley from (x, y) toward `angle`, starting `muzzle` units out.
 // A single projectile lands randomly within the spread; several projectiles
-// are fanned evenly across it.
+// are fanned evenly across it and spaced sideways across `width`.
 export function fireWeapon(pool, weapon, x, y, angle, muzzle, rng) {
   for (let i = 0; i < weapon.count; i++) {
-    const offset = weapon.count > 1
-      ? (i / (weapon.count - 1) - 0.5) * weapon.spread
-      : (rng.next() - 0.5) * weapon.spread;
+    const t = weapon.count > 1 ? i / (weapon.count - 1) - 0.5 : 0;
+    const offset = weapon.count > 1 ? t * weapon.spread : (rng.next() - 0.5) * weapon.spread;
+    const side = t * (weapon.width || 0);
     const a = angle + offset;
     const cos = Math.cos(a);
     const sin = Math.sin(a);
     const p = pool.spawn();
     if (!p) return;
-    p.x = x + cos * muzzle;
-    p.y = y + sin * muzzle;
+    p.x = x + cos * muzzle - Math.sin(angle) * side;
+    p.y = y + sin * muzzle + Math.cos(angle) * side;
     p.prevX = p.x;
     p.prevY = p.y;
     p.vx = cos * weapon.speed;
@@ -45,5 +45,12 @@ export function fireWeapon(pool, weapon, x, y, angle, muzzle, rng) {
     p.damage = weapon.damage;
     p.radius = weapon.radius;
     p.knockback = weapon.knockback;
+    // Pooled objects are reused, so every optional field is reset here.
+    p.turnRate = weapon.turnRate || 0;
+    p.homingRange = weapon.homingRange || 0;
+    p.pierce = weapon.pierce || 0;
+    p.lastHit = null;
+    p.explodeRadius = weapon.explodeRadius || 0;
+    p.explodeDamage = weapon.explodeDamage || 0;
   }
 }

@@ -12,3 +12,92 @@ canvas {
   height: 100vh;
   cursor: crosshair;
 }
+
+/* Evolution choice */
+.choice {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  background: rgba(3, 13, 24, 0.65);
+  font-family: ui-rounded, system-ui, sans-serif;
+  color: #e8fbff;
+}
+
+.choice.hidden {
+  display: none;
+}
+
+.choice-panel {
+  text-align: center;
+}
+
+.choice-panel h2 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #5ef2e0;
+}
+
+.choice-panel > p {
+  margin: 6px 0 24px;
+  opacity: 0.75;
+}
+
+.choice-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.choice-card {
+  position: relative;
+  width: 200px;
+  padding: 16px 16px 20px;
+  border: 1px solid rgba(94, 242, 224, 0.35);
+  border-radius: 14px;
+  background: rgba(10, 34, 54, 0.85);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.choice-card:hover,
+.choice-card:focus-visible {
+  border-color: #5ef2e0;
+  box-shadow: 0 0 24px rgba(94, 242, 224, 0.35);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.choice-card canvas {
+  display: block;
+  margin: 0 auto 8px;
+}
+
+.choice-card h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.choice-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  opacity: 0.8;
+}
+
+.choice-key {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-size: 13px;
+  opacity: 0.55;
+}

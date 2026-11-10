@@ -1,7 +1,8 @@
 // Tank classes: names, tree position and body sketches.
 // Coordinates are in tank-local units with +x pointing forward.
 // `hull` turns with the direction of travel; `guns` turns toward the cursor.
-// Stats and weapons are added in Phase 5.
+// `stats`: topSpeed (units/s), accel (units/s² from rest), pickupRadius
+// (pickups closer than this are pulled in). `weapon` is an id in weapons.js.
 
 import { c, ring, barrel } from './shapes.js';
 
@@ -11,6 +12,8 @@ export const CLASS_LIST = [
   {
     id: 'mote', name: 'Mote', tier: 1, branch: null, parent: null,
     blurb: 'A newborn spark. One small gun.',
+    stats: { topSpeed: 220, accel: 900, pickupRadius: 120 },
+    weapon: 'starter',
     hull: [c(0, 0, 16), c(-15, -11, 6), c(-15, 11, 6), c(-22, 0, 4)],
     guns: [c(0, 0, 7), ...barrel(0, 10, 14, 5, 4)],
   },
@@ -19,12 +22,16 @@ export const CLASS_LIST = [
   {
     id: 'skitter', name: 'Skitter', tier: 2, branch: 'rapid', parent: 'mote',
     blurb: 'Quick and light. Twin guns.',
+    stats: { topSpeed: 260, accel: 1150, pickupRadius: 130 },
+    weapon: 'twin',
     hull: [c(4, 0, 14), c(-14, 0, 10), c(-27, 0, 6), c(-36, 0, 3.5), c(8, -15, 6), c(8, 15, 6)],
     guns: [c(0, 0, 6), ...barrel(0, 8, 16, 4, 3.5, -7), ...barrel(0, 8, 16, 4, 3.5, 7)],
   },
   {
     id: 'spindrift', name: 'Spindrift', tier: 3, branch: 'rapid', parent: 'skitter',
     blurb: 'Sprays a wide fan of shots.',
+    stats: { topSpeed: 255, accel: 1150, pickupRadius: 140 },
+    weapon: 'spray',
     hull: [c(2, 0, 16), c(-16, 0, 11), c(-30, 0, 7), c(6, -19, 8), c(6, 19, 8), c(-8, -26, 5), c(-8, 26, 5)],
     guns: [
       c(0, 0, 7),
@@ -36,6 +43,8 @@ export const CLASS_LIST = [
   {
     id: 'needlejet', name: 'Needlejet', tier: 3, branch: 'rapid', parent: 'skitter',
     blurb: 'A tight, relentless stream.',
+    stats: { topSpeed: 270, accel: 1200, pickupRadius: 140 },
+    weapon: 'stream',
     hull: [c(6, 0, 12), c(-10, 0, 11), c(-24, 0, 8), c(-36, 0, 5), c(-45, 0, 3), c(10, -13, 5), c(10, 13, 5)],
     guns: [c(0, 0, 6), ...barrel(0, 8, 34, 4, 2.5)],
   },
@@ -44,18 +53,24 @@ export const CLASS_LIST = [
   {
     id: 'barnacle', name: 'Barnacle', tier: 2, branch: 'heavy', parent: 'mote',
     blurb: 'Slow and sturdy. One big cannon.',
+    stats: { topSpeed: 185, accel: 650, pickupRadius: 140 },
+    weapon: 'cannon',
     hull: [c(0, 0, 26), ...ring(8, 27, 7, Math.PI / 8)],
     guns: [c(0, 0, 11), ...barrel(0, 14, 18, 8, 7)],
   },
   {
     id: 'depthcharge', name: 'Depthcharge', tier: 3, branch: 'heavy', parent: 'barnacle',
     blurb: 'Shells that burst on impact.',
+    stats: { topSpeed: 175, accel: 600, pickupRadius: 150 },
+    weapon: 'shell',
     hull: [c(0, 0, 28), ...ring(10, 30, 7)],
     guns: [c(0, 0, 12), ...barrel(0, 14, 16, 7, 6), c(36, 0, 10)],
   },
   {
     id: 'harpoon', name: 'Harpoon', tier: 3, branch: 'heavy', parent: 'barnacle',
     blurb: 'Shots that pierce straight through.',
+    stats: { topSpeed: 180, accel: 650, pickupRadius: 150 },
+    weapon: 'harpoon',
     hull: [c(0, 0, 25), ...ring(6, 26, 8, Math.PI / 6), c(-34, 0, 9)],
     guns: [c(0, 0, 10), ...barrel(0, 12, 42, 6, 3.5)],
   },
@@ -64,18 +79,26 @@ export const CLASS_LIST = [
   {
     id: 'brood', name: 'Brood', tier: 2, branch: 'swarm', parent: 'mote',
     blurb: 'Launches small seekers from its pods.',
+    stats: { topSpeed: 215, accel: 850, pickupRadius: 135 },
+    weapon: 'seeker',
     hull: [c(0, 0, 18), c(-6, -20, 9), c(-6, 20, 9), c(-24, 0, 9), c(-20, -14, 5), c(-20, 14, 5)],
     guns: [c(0, 0, 8), ...barrel(0, 10, 12, 6, 5)],
   },
   {
     id: 'shoal', name: 'Shoal', tier: 3, branch: 'swarm', parent: 'brood',
     blurb: 'Floods the water with weak seekers.',
+    stats: { topSpeed: 215, accel: 850, pickupRadius: 150 },
+    weapon: 'swarm',
     hull: [c(0, 0, 19), ...ring(7, 25, 7.5, Math.PI / 7)],
     guns: [c(0, 0, 8), ...barrel(0, 10, 10, 6, 5), ...barrel(-0.5, 10, 8, 4, 3.5), ...barrel(0.5, 10, 8, 4, 3.5)],
   },
   {
     id: 'halo', name: 'Halo', tier: 3, branch: 'swarm', parent: 'brood',
     blurb: 'Circled by orbiting drones.',
+    stats: { topSpeed: 220, accel: 900, pickupRadius: 150 },
+    weapon: 'halo',
+    // Drones orbit the tank, hurt enemies they touch and absorb enemy shots.
+    drones: { count: 4, orbitRadius: 58, orbitSpeed: 2.4, radius: 7, damage: 1, hitCooldown: 0.4 },
     hull: [c(0, 0, 20), ...ring(12, 34, 4)],
     guns: [c(0, 0, 9), ...barrel(0, 11, 14, 6, 4.5)],
   },

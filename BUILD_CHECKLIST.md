@@ -210,18 +210,18 @@ is fun before anything is layered on top.
 
 ## Phase 5: Evolution tree
 
-- [ ] Evolution rules in a pure module: given a bubble total and a chosen
+- [x] Evolution rules in a pure module: given a bubble total and a chosen
       path, return the current class.
-- [ ] Reaching a threshold pauses the game and shows choice cards with a
+- [x] Reaching a threshold pauses the game and shows choice cards with a
       silhouette and one-line description.
-- [ ] Devolution at 80% of the threshold; no flicker at the boundary.
-- [ ] Re-evolving restores the earlier choice without a prompt.
-- [ ] All 10 classes have stats, a body and a primary weapon in data.
-- [ ] Seekers and orbiting drones implemented for the Swarm branch; explosive
+- [x] Devolution at 80% of the threshold; no flicker at the boundary.
+- [x] Re-evolving restores the earlier choice without a prompt.
+- [x] All 10 classes have stats, a body and a primary weapon in data.
+- [x] Seekers and orbiting drones implemented for the Swarm branch; explosive
       and piercing shots for the Heavy branch.
-- [ ] Morph animation with 1 s of invulnerability.
-- [ ] Debug keys: grant 10 bubbles, remove 10 bubbles.
-- [ ] Tests: every threshold crossing in both directions; path memory; a total
+- [x] Morph animation with 1 s of invulnerability.
+- [x] Debug keys: grant 10 bubbles, remove 10 bubbles.
+- [x] Tests: every threshold crossing in both directions; path memory; a total
       oscillating around a threshold does not flip the class.
 
 **Gate (human):** the owner plays each branch to tier 3 and says whether the
@@ -427,4 +427,45 @@ Additions not in the checklist:
 
 Not verified: whether the loop is fun; whether pickups (radius 5) are easy
 enough to see.
+
+**Phase 5.** Built as listed. Verified in headless Chromium:
+- Reaching 20 bubbles paused the game (simulation time frozen) and showed
+  three cards; pressing 2 picked Barnacle. At 60, two cards showed and a
+  mouse click picked Harpoon.
+- Dropping to 40 devolved Harpoon to Barnacle; returning to 60 restored
+  Harpoon with no prompt; dropping to 10 devolved twice to Mote; returning
+  to 20 restored Barnacle with no prompt.
+- Each of the 9 evolved forms played for 8 s with a scripted player: every
+  one fired its own weapon and killed 4 to 8 enemies. Screenshots show the
+  twin, spray and stream shots, curving seekers, and Halo's drones.
+- No console errors.
+
+Unit tests cover every threshold in both directions, multi-tier jumps,
+path memory, an oscillating total changing class only once, homing,
+piercing, explosions, parallel barrels, drones, and that every class has
+stats and an existing weapon.
+
+Bug found and fixed while testing: several presses of the same key within
+one frame counted as one, because presses were stored in a set. They are
+now counted.
+
+Additions and changes not in the checklist:
+- Weapon values for all 10 classes, in `js/data/weapons.js`, plus new
+  optional fields: `width` (parallel barrels), `turnRate`/`homingRange`,
+  `pierce`, `explodeRadius`/`explodeDamage`.
+- Halo's drones also absorb enemy shots, so the drone branch has a
+  defensive identity as well as contact damage.
+- Per-class stats (top speed, acceleration, pickup radius) replace the global
+  player values; `releaseDrag` and hull turning stay global.
+- The HUD shows the current form and its evolve and devolve totals as text
+  until the Phase 8 progress bar.
+- `[` and `]` (cycle classes) are removed; `=` and `-` (with F3 open) add
+  and remove 10 bubbles instead. Cycling fought the evolution rules, which
+  would immediately devolve a class the bubble total didn't support.
+- `?test` also exposes `chooseClass` for browser checks, and the game
+  counts kills.
+
+Not verified: whether the six final forms feel distinct, weapon balance, and
+whether the hit blink is too harsh: the scripted player was mid-blink
+(tank invisible) in 3 of 9 random frames.
 

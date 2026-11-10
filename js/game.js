@@ -2,10 +2,10 @@
 // and browser wiring in main.js.
 
 import { TUNING, PALETTE } from './data/tuning.js';
-import { CLASSES, START_CLASS } from './data/classes.js';
+import { CLASSES, CLASS_LIST, START_CLASS } from './data/classes.js';
 import { WEAPONS } from './data/weapons.js';
 import { ENEMIES, ARENA_POPULATION } from './data/enemies.js';
-import { createPlayer, updatePlayer, applyRecoil } from './entities/player.js';
+import { createPlayer, updatePlayer, applyRecoil, setPlayerClass } from './entities/player.js';
 import { createEnemy, updateEnemy, damageEnemy } from './entities/enemy.js';
 import { createPool } from './systems/pool.js';
 import { updateTrigger, fireWeapon } from './systems/weapons.js';
@@ -14,6 +14,8 @@ import { circlesOverlap, pushApart } from './systems/collision.js';
 import { takeDamage } from './systems/economy.js';
 import { createPickup, spawnBurst, updatePickups } from './systems/pickups.js';
 import { createSpawner, updateSpawner, spawnPoint } from './systems/spawning.js';
+import { evaluateEvolution } from './systems/evolution.js';
+import { updateDrones } from './systems/drones.js';
 import { createPop, spawnPop, updatePops } from './render/effects.js';
 
 const combat = TUNING.combat;
@@ -25,7 +27,10 @@ export function createGame(rng) {
     rng,
     time: 0,
     player,
-    playerTargets: [player], // what enemy shots can hit
+    playerTargets: [player], // what enemy shots can hit: the player and any drones
+    kills: 0,
+    path: {}, // class chosen at each tier, restored when re-evolving
+    pendingChoice: null, // class ids to choose between; the game pauses until one is picked
     enemies: [],
     playerShots: createPool(combat.projectilePoolSize, createProjectile),
     enemyShots: createPool(combat.enemyShotPoolSize, createProjectile),
@@ -40,13 +45,29 @@ export function createGame(rng) {
       TUNING.spawning.minDistanceFromPlayer, rng);
     game.enemies.push(createEnemy(ENEMIES[id], at.x, at.y, rng));
   };
-  game.onPlayerShotHit = (enemy, shot) => {
-    knockBack(enemy, shot);
-    if (damageEnemy(enemy, shot.damage, combat.hitFlashSeconds)) killEnemy(game, enemy);
+  game.playerShotEvents = {
+    onHit: (enemy, shot) => {
+      knockBack(enemy, shot);
+      hitEnemy(game, enemy, shot.damage);
+    },
+    onPop: (x, y, r) => spawnPop(game.pops, x, y, r, combat.shotPopSeconds, PALETTE.player),
+    onExplode: (shot) => {
+      for (const e of game.enemies) {
+        if (e.alive && Math.hypot(e.x - shot.x, e.y - shot.y) < shot.explodeRadius + e.radius) {
+          hitEnemy(game, e, shot.explodeDamage);
+        }
+      }
+      spawnPop(game.pops, shot.x, shot.y, shot.explodeRadius * 0.6, combat.deathPopSeconds, PALETTE.pickup);
+    },
   };
-  game.onPlayerShotPop = (x, y, r) => spawnPop(game.pops, x, y, r, combat.shotPopSeconds, PALETTE.player);
-  game.onEnemyShotHit = (target, shot) => hurtPlayer(game, shot.damage);
-  game.onEnemyShotPop = (x, y, r) => spawnPop(game.pops, x, y, r, combat.shotPopSeconds, PALETTE.danger);
+  game.enemyShotEvents = {
+    // Drones absorb enemy shots; only the player takes damage.
+    onHit: (target, shot) => {
+      if (target === player) hurtPlayer(game, shot.damage);
+    },
+    onPop: (x, y, r) => spawnPop(game.pops, x, y, r, combat.shotPopSeconds, PALETTE.danger),
+  };
+  game.onDroneHit = (enemy, damage) => hitEnemy(game, enemy, damage);
   game.onCollect = (value) => {
     player.bubbles += value;
   };
@@ -61,7 +82,12 @@ function knockBack(target, shot) {
   target.vy += (shot.vy / speed) * shot.knockback;
 }
 
+function hitEnemy(game, enemy, damage) {
+  if (damageEnemy(enemy, damage, combat.hitFlashSeconds)) killEnemy(game, enemy);
+}
+
 function killEnemy(game, enemy) {
+  game.kills++;
   spawnBurst(game.pickups, enemy.x, enemy.y, enemy.def.drops,
     pickupSettings.dropSpeedMin, pickupSettings.dropSpeedMax, 0, game.rng);
   spawnPop(game.pops, enemy.x, enemy.y, enemy.radius * combat.deathPopScale,
@@ -102,14 +128,47 @@ function removeDead(enemies) {
   enemies.length = kept;
 }
 
+function changeClass(game, classId) {
+  const { player } = game;
+  setPlayerClass(player, CLASSES[classId]);
+  game.playerTargets = [player, ...player.drones];
+  const evo = TUNING.evolution;
+  player.morph = evo.morphSeconds;
+  player.invuln = Math.max(player.invuln, evo.morphInvulnSeconds);
+  spawnPop(game.pops, player.x, player.y, player.radius * 1.8, evo.morphSeconds, PALETTE.player);
+}
+
+// Applies the player's pick from `game.pendingChoice` and resumes play.
+export function chooseClass(game, classId) {
+  if (!game.pendingChoice || !game.pendingChoice.includes(classId)) return;
+  game.path[CLASSES[classId].tier] = classId;
+  game.pendingChoice = null;
+  changeClass(game, classId);
+}
+
+function checkEvolution(game) {
+  const { player } = game;
+  const result = evaluateEvolution(player.classId, player.bubbles, game.path, CLASSES, CLASS_LIST, TUNING.evolution);
+  if (!result) return;
+  if (result.type === 'choose') game.pendingChoice = result.options;
+  else changeClass(game, result.classId);
+}
+
+// Debug: add (or with a negative amount, remove) bubbles without spilling.
+export function grantBubbles(game, amount) {
+  game.player.bubbles = Math.max(0, game.player.bubbles + amount);
+}
+
 // `controls`: moveX, moveY (-1..1), aimX, aimY (world units), fire (bool).
+// Does nothing while a class choice is pending.
 export function updateGame(game, controls, dt) {
+  if (game.pendingChoice) return;
   const { player } = game;
   const arenaRadius = TUNING.arena.radius;
   game.time += dt;
 
   updatePlayer(player, controls.moveX, controls.moveY, controls.aimX, controls.aimY, TUNING, dt);
-  const weapon = WEAPONS.starter;
+  const weapon = WEAPONS[player.weapon];
   const shots = updateTrigger(player.trigger, controls.fire, weapon, dt);
   for (let i = 0; i < shots; i++) {
     fireWeapon(game.playerShots, weapon, player.x, player.y, player.aim, player.muzzle, game.rng);
@@ -118,12 +177,15 @@ export function updateGame(game, controls, dt) {
 
   for (const e of game.enemies) updateEnemy(e, game, dt);
   resolveContacts(game);
+  const cls = CLASSES[player.classId];
+  if (cls.drones) updateDrones(player, cls.drones, game.enemies, game.onDroneHit, dt);
 
-  updateProjectiles(game.playerShots, game.enemies, arenaRadius, game.onPlayerShotHit, game.onPlayerShotPop, dt);
-  updateProjectiles(game.enemyShots, game.playerTargets, arenaRadius, game.onEnemyShotHit, game.onEnemyShotPop, dt);
+  updateProjectiles(game.playerShots, game.enemies, arenaRadius, game.playerShotEvents, dt);
+  updateProjectiles(game.enemyShots, game.playerTargets, arenaRadius, game.enemyShotEvents, dt);
   removeDead(game.enemies);
 
-  updatePickups(game.pickups, player, TUNING.player.pickupRadius, pickupSettings, arenaRadius, game.onCollect, dt);
+  updatePickups(game.pickups, player, player.pickupRadius, pickupSettings, arenaRadius, game.onCollect, dt);
   updateSpawner(game.spawner, game.enemies, game.spawnEnemy, TUNING.spawning.respawnSeconds, dt);
   updatePops(game.pops, dt);
+  checkEvolution(game);
 }

@@ -35,3 +35,18 @@ test('every class has a hull and guns made of valid circles', () => {
     assert.ok(classRadius(cls) > 0);
   }
 });
+
+test('every class has stats and a weapon that exists', async () => {
+  const { WEAPONS } = await import('../js/data/weapons.js');
+  for (const cls of CLASS_LIST) {
+    assert.ok(WEAPONS[cls.weapon], `${cls.id} weapon ${cls.weapon}`);
+    for (const key of ['topSpeed', 'accel', 'pickupRadius']) {
+      assert.ok(cls.stats[key] > 0, `${cls.id} ${key}`);
+    }
+  }
+});
+
+test('every tier has an evolution threshold', async () => {
+  const { TUNING } = await import('../js/data/tuning.js');
+  for (const cls of CLASS_LIST) assert.ok(TUNING.evolution.thresholds[cls.tier] !== undefined, cls.id);
+});

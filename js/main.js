@@ -1,15 +1,15 @@
 import { TUNING, PALETTE } from './data/tuning.js';
-import { CLASS_LIST } from './data/classes.js';
+import { CLASSES } from './data/classes.js';
 import { createFixedStep, startLoop } from './loop.js';
 import { createInput } from './input.js';
 import { createRng, seedFromQuery } from './rng.js';
 import { createCamera, updateCamera, screenToWorld } from './camera.js';
-import { setPlayerClass } from './entities/player.js';
-import { createGame, updateGame } from './game.js';
+import { createGame, updateGame, chooseClass, grantBubbles } from './game.js';
 import { clearSpriteCache } from './render/tank.js';
 import { createSpecks } from './render/background.js';
 import { renderScene } from './render/scene.js';
 import { drawHud } from './ui/hud.js';
+import { createChoiceOverlay } from './ui/choice.js';
 import { createDebug, tickFps, drawDebugText } from './ui/debug.js';
 
 const canvas = document.getElementById('game');
@@ -42,9 +42,10 @@ const stepper = createFixedStep(1 / TUNING.sim.stepHz, TUNING.sim.maxFrameSecond
 const dt = 1 / TUNING.sim.stepHz;
 
 // `?test` exposes the game state to automated browser checks.
-if (query.has('test')) window.__test = { game, camera, view };
+if (query.has('test')) window.__test = { game, camera, view, chooseClass };
 
 const controls = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, fire: false };
+let lastAlpha = 0;
 
 function axis(negative, positive) {
   return (input.isDown(positive) ? 1 : 0) - (input.isDown(negative) ? 1 : 0);
@@ -65,10 +66,24 @@ function step() {
   );
 }
 
-// Debug only: step through the class sketches with [ and ].
-function cycleClass(direction) {
-  const i = CLASS_LIST.findIndex((c) => c.id === game.player.classId);
-  setPlayerClass(game.player, CLASS_LIST[(i + direction + CLASS_LIST.length) % CLASS_LIST.length]);
+const choice = createChoiceOverlay((classId) => {
+  chooseClass(game, classId);
+  choice.hide();
+});
+
+// Shows the choice cards when the game asks for one, and handles the
+// 1/2/3 keys. Digit presses are always consumed so a stale press made
+// during play can't pick a card the moment the screen opens.
+function handleChoice() {
+  const pressed = [1, 2, 3].map((n) => input.consume(`Digit${n}`));
+  const options = game.pendingChoice;
+  if (!options) return;
+  if (!choice.visible) choice.show(options.map((id) => CLASSES[id]), PALETTE.player);
+  const index = pressed.indexOf(true);
+  if (index >= 0 && index < options.length) {
+    chooseClass(game, options[index]);
+    choice.hide();
+  }
 }
 
 function render(alpha) {
@@ -94,7 +109,8 @@ function render(alpha) {
         + `, enemy shots ${game.enemyShots.activeCount}/${game.enemyShots.capacity}`,
       `         pickups ${game.pickups.activeCount}/${game.pickups.capacity}`
         + `, pops ${game.pops.activeCount}/${game.pops.capacity}`,
-      `class    ${player.classId}  [ ] to cycle`,
+      `class    ${player.classId}  path ${JSON.stringify(game.path)}`,
+      `bubbles  ${player.bubbles}  = / - to add or remove 10`,
       `speed    ${Math.hypot(player.vx, player.vy).toFixed(0)}`,
       `position ${player.x.toFixed(0)}, ${player.y.toFixed(0)}`,
     ]);
@@ -104,10 +120,15 @@ function render(alpha) {
 startLoop((elapsed) => {
   tickFps(debug, elapsed);
   if (input.consume('F3')) debug.enabled = !debug.enabled;
-  if (input.consume('BracketRight') && debug.enabled) cycleClass(1);
-  if (input.consume('BracketLeft') && debug.enabled) cycleClass(-1);
+  if (input.consume('Equal') && debug.enabled) grantBubbles(game, 10);
+  if (input.consume('Minus') && debug.enabled) grantBubbles(game, -10);
+  handleChoice();
 
-  const { steps, alpha } = stepper.advance(elapsed);
-  for (let i = 0; i < steps; i++) step();
-  render(alpha);
+  // The simulation is paused while a choice is on screen.
+  if (!game.pendingChoice) {
+    const { steps, alpha } = stepper.advance(elapsed);
+    for (let i = 0; i < steps && !game.pendingChoice; i++) step();
+    lastAlpha = alpha;
+  }
+  render(lastAlpha);
 });

@@ -9,12 +9,10 @@ export const TUNING = {
     logicalHeight: 720,
   },
   player: {
-    accel: 900, // units/s² from rest
-    topSpeed: 220, // units/s
+    // Top speed, acceleration and pickup radius are per class, in classes.js.
     releaseDrag: 2.5, // how fast you slow down with no keys held; lower glides further
     hullTurnRate: 6, // rad/s the hull turns toward the direction of travel
     hullTurnMinSpeed: 15, // below this speed the hull holds its heading
-    pickupRadius: 120, // pickups closer than this are pulled in
     invulnSeconds: 1, // after taking a hit
   },
   camera: {
@@ -56,6 +54,12 @@ export const TUNING = {
     separationPadding: 14, // enemies start pushing apart this far before touching
     separationWeight: 1.6,
     edgeMargin: 120, // enemies turn back this far inside the membrane
+  },
+  evolution: {
+    thresholds: { 1: 0, 2: 20, 3: 60 }, // bubbles needed to reach each tier
+    devolveFraction: 0.8, // devolve below this share of your tier's threshold
+    morphSeconds: 0.6, // length of the transformation animation
+    morphInvulnSeconds: 1,
   },
   arena: {
     radius: 1000,
