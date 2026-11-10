@@ -152,15 +152,15 @@ particles.
 
 ## Phase 1: Skeleton and loop
 
-- [ ] Create the file layout above with empty modules where needed.
-- [ ] Canvas fills the window, keeps a logical height of 720, re-fits on
+- [x] Create the file layout above with empty modules where needed.
+- [x] Canvas fills the window, keeps a logical height of 720, re-fits on
       resize, and stays sharp on high-density displays.
-- [ ] Fixed-step loop with accumulator and 250 ms clamp.
-- [ ] Input module: held-key map, mouse position in world coordinates, button
+- [x] Fixed-step loop with accumulator and 250 ms clamp.
+- [x] Input module: held-key map, mouse position in world coordinates, button
       state. Suppress the right-click context menu on the canvas.
-- [ ] Seeded random generator; the seed is shown in the debug overlay.
-- [ ] Debug overlay on F3: frame rate, entity counts, collision circles.
-- [ ] Test: the loop runs the expected number of steps for a given elapsed time.
+- [x] Seeded random generator; the seed is shown in the debug overlay.
+- [x] Debug overlay on F3: frame rate, entity counts, collision circles.
+- [x] Test: the loop runs the expected number of steps for a given elapsed time.
 
 **Gate (self-check):** page loads with no console errors; overlay toggles.
 
