@@ -181,13 +181,13 @@ offer the three or four constants that matter and what each one changes.
 
 ## Phase 3: Shooting and collision
 
-- [ ] Weapon schema: fire rate, damage, speed, spread, count, lifetime, radius.
-- [ ] Projectile pool, pre-allocated; no allocation while firing.
-- [ ] Holding the left button fires at the weapon's rate, independent of frame
+- [x] Weapon schema: fire rate, damage, speed, spread, count, lifetime, radius.
+- [x] Projectile pool, pre-allocated; no allocation while firing.
+- [x] Holding the left button fires at the weapon's rate, independent of frame
       rate.
-- [ ] Circle collision between projectiles and stationary target dummies.
-- [ ] Hit flash on the target, slight recoil on the player, pop on expiry.
-- [ ] Tests: circle overlap; shots fired over 10 simulated seconds match the
+- [x] Circle collision between projectiles and stationary target dummies.
+- [x] Hit flash on the target, slight recoil on the player, pop on expiry.
+- [x] Tests: circle overlap; shots fired over 10 simulated seconds match the
       fire rate.
 
 **Gate (self-check):** dummies can be destroyed; pool never grows.
@@ -366,3 +366,34 @@ Movement constants to tune, all in `js/data/tuning.js`:
 - `player.releaseDrag` (2.5): glide after letting go; lower is floatier.
 - `camera.follow` (6) and `camera.lead` (0.22): how tightly the view tracks
   you and how far it leans toward the cursor.
+
+### Session 2: Phase 3
+
+Gates closed from session 1: the owner approved the title Glowfathom and the
+class names. They asked to continue without commenting on movement, so the
+Phase 2 feel gate is treated as passed with the session 1 values.
+
+**Phase 3.** Built as listed. Verified in headless Chromium: no console
+errors; 5 hits destroy a dummy and it respawns after 3 s; the white hit
+flash appeared in 12 of 40 rapid frames while firing; recoil pushes the tank
+back; during 8 s of sweeping fire the projectile pool stayed at 512 slots
+with at most 5 in use. Unit tests: exactly 40 shots in 10 s at 4 per second,
+70 at 7 per second, no burst after a pause, volleys fan evenly, the pool
+never grows.
+
+Bugs found and fixed while testing:
+- The trigger fired 41 shots in 10 s instead of 40: the first shot borrowed
+  a step's time, so every later shot came one step early.
+- Debug circles on shots were drawn a step ahead of the shots.
+
+Additions not in the checklist:
+- `recoil` (8) in the weapon schema; the checklist asked for recoil but gave
+  no value.
+- Dummies respawn after 3 s, so testing never runs out of targets. They are
+  scaffolding and get replaced by real enemies in Phase 4.
+- Shots pop when they reach the arena membrane as well as when they expire.
+- Every class fires the starter weapon from the tip of its own gun until
+  Phase 5 gives each class its weapon.
+
+Not verified: how firing feels; whether 8 recoil reads as "slight".
+

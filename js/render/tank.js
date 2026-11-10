@@ -64,7 +64,10 @@ function getSprites(cls, color, pxPerUnit) {
   const key = `${cls.id}|${color}|${pxPerUnit}`;
   let sprites = cache.get(key);
   if (!sprites) {
-    sprites = { hull: buildSprite(cls.hull, color, pxPerUnit), guns: buildSprite(cls.guns, color, pxPerUnit) };
+    sprites = {
+      hull: buildSprite(cls.hull, color, pxPerUnit),
+      guns: cls.guns.length ? buildSprite(cls.guns, color, pxPerUnit) : null,
+    };
     cache.set(key, sprites);
   }
   return sprites;
@@ -99,6 +102,6 @@ function drawHighlights(ctx, circles, x, y, angle) {
 export function drawTank(ctx, cls, color, x, y, heading, aim, pxPerUnit) {
   const sprites = getSprites(cls, color, pxPerUnit);
   drawSprite(ctx, sprites.hull, x, y, heading);
-  drawSprite(ctx, sprites.guns, x, y, aim);
+  if (sprites.guns) drawSprite(ctx, sprites.guns, x, y, aim);
   drawHighlights(ctx, cls.hull, x, y, heading);
 }

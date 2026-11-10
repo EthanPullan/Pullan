@@ -1,5 +1,6 @@
 import { classRadius } from '../data/classes.js';
 import { stepMovement, constrainToArena, turnToward } from '../systems/movement.js';
+import { createTrigger } from '../systems/weapons.js';
 
 export function createPlayer(cls) {
   const player = {
@@ -8,6 +9,8 @@ export function createPlayer(cls) {
     aim: 0, // turret direction
     prevX: 0, prevY: 0, prevHeading: 0, prevAim: 0,
     classId: null, radius: 0,
+    muzzle: 0, // distance from centre to the gun tip
+    trigger: createTrigger(),
   };
   setPlayerClass(player, cls);
   return player;
@@ -16,6 +19,13 @@ export function createPlayer(cls) {
 export function setPlayerClass(player, cls) {
   player.classId = cls.id;
   player.radius = classRadius(cls);
+  player.muzzle = Math.max(...cls.guns.map((g) => g.x + g.r));
+}
+
+// Pushes the player opposite to the aim, once per shot fired.
+export function applyRecoil(player, amount) {
+  player.vx -= Math.cos(player.aim) * amount;
+  player.vy -= Math.sin(player.aim) * amount;
 }
 
 export function updatePlayer(player, moveX, moveY, aimX, aimY, tuning, dt) {

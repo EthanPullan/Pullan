@@ -20,6 +20,14 @@ export const TUNING = {
     lead: 0.22, // share of the cursor's distance from screen centre the camera shifts by
     maxLead: 150,
   },
+  combat: {
+    projectilePoolSize: 512,
+    popPoolSize: 256,
+    hitFlashSeconds: 0.1,
+    shotPopSeconds: 0.18,
+    deathPopSeconds: 0.35,
+    deathPopScale: 1.4, // death ring size relative to the target's radius
+  },
   arena: {
     radius: 1000,
     edgeBounce: 0.3, // share of outward speed returned when hitting the membrane
