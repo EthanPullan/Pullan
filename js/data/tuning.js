@@ -25,7 +25,6 @@ export const TUNING = {
     enemyShotPoolSize: 256,
     contactKnockback: 260, // units/s a touching enemy is thrown back
     contactStunSeconds: 0.5, // it drifts without steering for this long
-    popPoolSize: 256,
     hitFlashSeconds: 0.1,
     shotPopSeconds: 0.18,
     deathPopSeconds: 0.35,
@@ -73,12 +72,22 @@ export const TUNING = {
     solidBounce: 0.6, // share of outward speed returned by an outer, solid membrane
     ejectInvulnSeconds: 2, // immunity after being ejected at 0 bubbles
   },
+  effects: {
+    particlePoolSize: 1024,
+    screenShake: true, // Phase 10 adds a setting for this
+    shakeMax: 14, // units the view can jolt at full shake
+    shakeDecay: 1.8, // shake lost per second
+    trailInterval: 0.05, // seconds between trail bubbles while moving fast
+    trailMinSpeed: 120,
+  },
   lighting: {
     playerGlowRadius: 280,
     playerGlowAlpha: 0.1,
   },
   background: {
     tileSize: 2048,
+    ambientCount: 36, // larger bubbles rising through the water
+    vignette: 0.5, // how dark the screen's edges are
     layers: [
       { depth: 0.25, count: 110, minSize: 0.6, maxSize: 1.4, alpha: 0.22 },
       { depth: 0.5, count: 70, minSize: 1.0, maxSize: 2.0, alpha: 0.32 },

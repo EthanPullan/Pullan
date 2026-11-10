@@ -271,12 +271,12 @@ mouse; screenshot each one.
 
 ## Phase 9: Effects and sound
 
-- [ ] Pooled particles for pops, muzzle puffs, trails and evolution bursts.
-- [ ] Screen shake and brief hit-pause on large impacts.
-- [ ] Synthesised sounds: shot, hit, pickup, evolve, devolve, ability, boss
+- [x] Pooled particles for pops, muzzle puffs, trails and evolution bursts.
+- [x] Screen shake and brief hit-pause on large impacts.
+- [x] Synthesised sounds: shot, hit, pickup, evolve, devolve, ability, boss
       warning. Pitch varies slightly so repeats do not grate.
-- [ ] Audio starts only after the first click, as browsers require.
-- [ ] Ambient background bubbles and a soft vignette.
+- [x] Audio starts only after the first click, as browsers require.
+- [x] Ambient background bubbles and a soft vignette.
 
 **Gate (human):** the owner plays with sound on. You cannot hear the result,
 so list each sound with its waveform, pitch and length to make feedback easy
@@ -622,4 +622,51 @@ Additions and choices not in the checklist:
 
 Not verified: how the screens look on small or unusual window sizes (the
 class tree needs about 860 pixels of width).
+
+### Session 7: Phase 9
+
+**Phase 9.** Built as listed. Verified in headless Chromium: audio stayed
+off until the first click, then shot, hit, pop, pickup, evolve, hurt and
+boss warning sounds all played during a scripted fight (the rate limit
+trimmed 2 of 81); a hit shook the screen; screenshots show death bursts,
+the evolution burst, the movement trail, ambient bubbles and the vignette.
+No console errors. `tests/effects.test.js` checks that each moment queues
+its sound, that a hit shakes and briefly holds the game, that shake fades,
+and that moving fast leaves a trail; `tests/particles.test.js` covers the
+particle pool.
+
+How it works: the game records sound events in `game.sounds`; `main.js`
+plays and clears them each frame through `js/audio.js`, which synthesises
+everything with the Web Audio API. The game rules stay testable in Node.
+Particles (rings and dots) share one 1,024-slot pool in
+`js/systems/particles.js`, which replaces the pop rings that lived in a
+drawing file (the code smell noted in session 3).
+
+Sounds, for the listening check (each varies up to 6% in pitch per play):
+
+| Sound | When | Recipe |
+|---|---|---|
+| shot | each player shot | sine, 620 → 300 Hz, 0.08 s; bigger shots lower |
+| hit | a shot lands without killing | band-passed noise at 2.2 kHz plus a 1.4 kHz tick, 0.04 s |
+| pop | an enemy dies | sine rising 240 → 900 Hz, 0.1 s, plus a hiss; bigger enemies lower |
+| pickup | each bubble collected | triangle, 880 → 1,320 Hz, 0.07 s; climbs a semitone per pickup in a quick run, up to an octave |
+| hurt | the player is hit | sawtooth, 220 → 80 Hz, low-passed at 900 Hz, 0.28 s |
+| evolve | moving up a tier | triangle C5, E5, G5, C6, 90 ms apart |
+| devolve | moving down a tier | triangle G5, E5, C5, G4, 100 ms apart |
+| ability | right-click ability | noise swept 400 → 2,400 Hz, plus a sine 300 → 600 Hz, 0.3 s |
+| warning | a boss winds up, or changes phase | two triangle pulses, 150 → 110 Hz, 0.18 s each |
+| explode | exploding shells, mines | low-passed noise 900 → 150 Hz plus a sine 120 → 40 Hz, 0.4 s |
+| hum | always, after the first click | sines at 55, 55.7 and 82.5 Hz, low-passed at 220 Hz, quiet |
+
+Shake and hit-pause: player hit 0.45 shake and 0.06 s pause; boss death
+full shake and 0.18 s; boss phase change 0.6 and 0.1 s; Shockwave 0.4 and
+0.05 s; heavy enemy death 0.3 and 0.04 s; explosions 0.25 to 0.4, no pause.
+Shake can be turned off with `effects.screenShake` in `tuning.js` until
+Phase 10 adds the setting.
+
+Additions not in the checklist: an `explode` sound for shells and mines,
+and a `pop` sound for deaths; the checklist's list had neither.
+
+Not verified: how anything sounds. Headless Chromium plays audio into a
+silent device, so only that the right sounds were triggered was checked.
 

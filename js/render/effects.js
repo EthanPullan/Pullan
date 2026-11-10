@@ -1,38 +1,24 @@
 import { rgba } from './color.js';
+import { RING } from '../systems/particles.js';
 
-export function createPop() {
-  return { x: 0, y: 0, radius: 0, age: 0, life: 0, color: '#ffffff' };
-}
-
-export function spawnPop(pool, x, y, radius, life, color) {
-  const pop = pool.spawn();
-  if (!pop) return;
-  pop.x = x;
-  pop.y = y;
-  pop.radius = radius;
-  pop.age = 0;
-  pop.life = life;
-  pop.color = color;
-}
-
-export function updatePops(pool, dt) {
-  for (const pop of pool.items) {
-    if (!pop.active) continue;
-    pop.age += dt;
-    if (pop.age >= pop.life) pool.release(pop);
-  }
-}
-
-// An expanding, fading ring.
-export function drawPops(ctx, pool) {
+// Rings expand and fade; dots shrink and fade.
+export function drawParticles(ctx, pool, alpha) {
   ctx.lineWidth = 1.5;
-  for (const pop of pool.items) {
-    if (!pop.active) continue;
-    const t = pop.age / pop.life;
-    ctx.strokeStyle = rgba(pop.color, (1 - t) * 0.85);
+  for (const p of pool.items) {
+    if (!p.active) continue;
+    const t = p.age / p.life;
+    const x = p.prevX + (p.x - p.prevX) * alpha;
+    const y = p.prevY + (p.y - p.prevY) * alpha;
     ctx.beginPath();
-    ctx.arc(pop.x, pop.y, pop.radius * (1 + 1.6 * t), 0, Math.PI * 2);
-    ctx.stroke();
+    if (p.kind === RING) {
+      ctx.strokeStyle = rgba(p.color, (1 - t) * 0.85);
+      ctx.arc(x, y, p.size * (1 + 1.6 * t), 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = rgba(p.color, (1 - t) * 0.9);
+      ctx.arc(x, y, p.size * (1 - 0.5 * t), 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 

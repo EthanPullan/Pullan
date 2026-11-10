@@ -129,7 +129,8 @@ function steer(e, world, dt) {
   }
 }
 
-// `world` is the game: player, enemies, rng, and `executeAttack(e, attack)`.
+// `world` is the game: player, enemies, rng, `executeAttack(e, attack)`,
+// `onAttackStart(e, attack)` and `onPhaseChange(e)`.
 export function updateEnemy(e, world, dt) {
   const { def } = e;
   const { player } = world;
@@ -166,7 +167,10 @@ export function updateEnemy(e, world, dt) {
 
   const toPlayer = Math.atan2(player.y - e.y, player.x - e.x);
   const event = updateAttacks(e.attack, attacksOf(def, e.phase), (a) => canStart(e, a, player), dt);
-  if (event && event.kind === 'start') e.attack.aim = toPlayer;
+  if (event && event.kind === 'start') {
+    e.attack.aim = toPlayer;
+    world.onAttackStart(e, event.attack);
+  }
   if (event && event.kind === 'execute') world.executeAttack(e, event.attack);
 
   if (def.guns.length) {

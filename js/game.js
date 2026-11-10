@@ -21,7 +21,7 @@ import { evaluateEvolution } from './systems/evolution.js';
 import { updateDrones } from './systems/drones.js';
 import { constrainToArena } from './systems/movement.js';
 import { updateAbility } from './systems/abilities.js';
-import { createPop, spawnPop, updatePops } from './render/effects.js';
+import { createParticle, spawnRing, spawnDots, updateParticles } from './systems/particles.js';
 
 const combat = TUNING.combat;
 const pickupSettings = TUNING.pickups;
@@ -43,6 +43,10 @@ export function createGame(rng) {
     player,
     playerTargets: [player], // what enemy shots can hit: the player and any drones
     kills: 0,
+    sounds: [], // sound events since main.js last played them: { type, size }
+    shake: 0, // screen shake, 0 to 1, decaying
+    hitPause: 0, // seconds the simulation holds still after a big impact
+    trailTimer: 0,
     unlocked: new Set([START_CLASS]), // every form reached at least once, for the class tree
     defeated: new Set(), // ids of bosses beaten
     victoryPending: false, // true while the victory screen is up; the game pauses
@@ -53,7 +57,7 @@ export function createGame(rng) {
     playerShots: createPool(combat.projectilePoolSize, createProjectile),
     enemyShots: createPool(combat.enemyShotPoolSize, createProjectile),
     pickups: createPool(pickupSettings.poolSize, createPickup),
-    pops: createPool(combat.popPoolSize, createPop),
+    particles: createPool(TUNING.effects.particlePoolSize, createParticle),
   };
 
   // Event handlers are made once here, so the update loop allocates none.
@@ -70,21 +74,32 @@ export function createGame(rng) {
   };
   game.executeAttack = (e, attack) => executeAttack(game, e, attack);
   game.onPhaseChange = (e) => {
-    spawnPop(game.pops, e.x, e.y, e.radius * 2, combat.deathPopSeconds * 2, PALETTE.danger);
+    spawnRing(game.particles, e.x, e.y, e.radius * 2, combat.deathPopSeconds * 2, PALETTE.danger);
+    impact(game, 0.6, 0.1);
+    sound(game, 'warning');
+  };
+  // A boss winding up an attack sounds a warning.
+  game.onAttackStart = (e) => {
+    if (e.def.boss) sound(game, 'warning');
   };
   game.playerShotEvents = {
     onHit: (enemy, shot) => {
       knockBack(enemy, shot);
       hitEnemy(game, enemy, shot.damage);
     },
-    onPop: (x, y, r) => spawnPop(game.pops, x, y, r, combat.shotPopSeconds, PALETTE.player),
+    onPop: (x, y, r) => spawnRing(game.particles, x, y, r, combat.shotPopSeconds, PALETTE.player),
     onExplode: (shot) => {
       for (const e of game.enemies) {
         if (e.alive && Math.hypot(e.x - shot.x, e.y - shot.y) < shot.explodeRadius + e.radius) {
           hitEnemy(game, e, shot.explodeDamage);
         }
       }
-      spawnPop(game.pops, shot.x, shot.y, shot.explodeRadius * 0.6, combat.deathPopSeconds, PALETTE.pickup);
+      spawnRing(game.particles, shot.x, shot.y, shot.explodeRadius * 0.6, combat.deathPopSeconds, PALETTE.pickup);
+      spawnDots(game.particles, game.rng, shot.x, shot.y, 14, {
+        speedMin: 80, speedMax: 260, size: 2.5, life: 0.4, color: PALETTE.pickup,
+      });
+      impact(game, 0.25, 0);
+      sound(game, 'explode');
     },
   };
   game.enemyShotEvents = {
@@ -92,11 +107,12 @@ export function createGame(rng) {
     onHit: (target, shot) => {
       if (target === player) hurtPlayer(game, shot.damage);
     },
-    onPop: (x, y, r) => spawnPop(game.pops, x, y, r, combat.shotPopSeconds, PALETTE.danger),
+    onPop: (x, y, r) => spawnRing(game.particles, x, y, r, combat.shotPopSeconds, PALETTE.danger),
   };
   game.onDroneHit = (enemy, damage) => hitEnemy(game, enemy, damage);
   game.onCollect = (value) => {
     player.bubbles += value;
+    sound(game, 'pickup');
   };
 
   populate(rosterFor(0, ROSTERS), PACKS, game.spawnEnemy);
@@ -168,7 +184,9 @@ function executeAttack(game, e, attack) {
       break;
     case 'blast':
       if (Math.hypot(player.x - e.x, player.y - e.y) < attack.radius + player.radius) hurtPlayer(game, attack.damage);
-      spawnPop(game.pops, e.x, e.y, attack.radius * 0.6, combat.deathPopSeconds, PALETTE.danger);
+      spawnRing(game.particles, e.x, e.y, attack.radius * 0.6, combat.deathPopSeconds, PALETTE.danger);
+      impact(game, 0.4, 0);
+      sound(game, 'explode');
       e.alive = false;
       e.expired = true;
       break;
@@ -191,6 +209,21 @@ export function dismissVictory(game) {
 
 function hitEnemy(game, enemy, damage) {
   if (damageEnemy(enemy, damage, combat.hitFlashSeconds)) killEnemy(game, enemy);
+  else if (enemy.alive) sound(game, 'hit');
+}
+
+// --- Feel: sounds, shake and hit-pause -------------------------------------
+
+// Queues a sound for main.js to play. `size` scales pitch (bigger is lower).
+function sound(game, type, size = 1) {
+  game.sounds.push({ type, size });
+}
+
+// A jolt: adds screen shake (0 to 1) and holds the simulation still for
+// `pause` seconds, so big hits land with weight.
+function impact(game, shake, pause) {
+  game.shake = Math.min(1, game.shake + shake);
+  game.hitPause = Math.max(game.hitPause, pause);
 }
 
 function killEnemy(game, enemy) {
@@ -200,8 +233,14 @@ function killEnemy(game, enemy) {
       pickupSettings.dropSpeedMin, pickupSettings.dropSpeedMax, 0, game.rng);
   }
   if (enemy.def.boss) defeatBoss(game, enemy);
-  spawnPop(game.pops, enemy.x, enemy.y, enemy.radius * combat.deathPopScale,
+  spawnRing(game.particles, enemy.x, enemy.y, enemy.radius * combat.deathPopScale,
     combat.deathPopSeconds, PALETTE.enemy);
+  spawnDots(game.particles, game.rng, enemy.x, enemy.y, Math.round(6 + enemy.radius / 2), {
+    speedMin: 60, speedMax: 220, size: 2.5, life: 0.5, color: PALETTE.enemy,
+  });
+  sound(game, 'pop', enemy.radius / 15);
+  if (enemy.def.boss) impact(game, 1, 0.18);
+  else if (enemy.def.heavy) impact(game, 0.3, 0.04);
 }
 
 function defeatBoss(game, boss) {
@@ -227,7 +266,12 @@ export function hurtPlayer(game, damage) {
     pickupSettings.spillSpeedMin, pickupSettings.spillSpeedMax, pickupSettings.spillCollectDelay, game.rng);
   player.invuln = TUNING.player.invulnSeconds;
   player.blink = TUNING.player.invulnSeconds;
-  spawnPop(game.pops, player.x, player.y, player.radius * 1.2, combat.deathPopSeconds, PALETTE.danger);
+  spawnRing(game.particles, player.x, player.y, player.radius * 1.2, combat.deathPopSeconds, PALETTE.danger);
+  spawnDots(game.particles, game.rng, player.x, player.y, 10, {
+    speedMin: 80, speedMax: 240, size: 2.5, life: 0.45, color: PALETTE.danger,
+  });
+  impact(game, 0.45, 0.06);
+  sound(game, 'hurt');
   if (player.bubbles === 0 && !game.transition) eject(game);
 }
 
@@ -283,7 +327,7 @@ function enterArena(game, cell, entry, kind) {
   clearPool(game.playerShots);
   clearPool(game.enemyShots);
   clearPool(game.pickups);
-  clearPool(game.pops);
+  clearPool(game.particles);
 
   player.x = player.prevX = entry.x;
   player.y = player.prevY = entry.y;
@@ -378,7 +422,7 @@ function useAbility(game, ability, controls) {
       player.vx += dx * ability.impulse;
       player.vy += dy * ability.impulse;
       player.invuln = Math.max(player.invuln, ability.invulnSeconds);
-      spawnPop(game.pops, player.x, player.y, player.radius, combat.shotPopSeconds * 2, PALETTE.player);
+      spawnRing(game.particles, player.x, player.y, player.radius, combat.shotPopSeconds * 2, PALETTE.player);
       break;
     }
     case 'shockwave':
@@ -392,7 +436,8 @@ function useAbility(game, ability, controls) {
         }
         hitEnemy(game, e, ability.damage);
       }
-      spawnPop(game.pops, player.x, player.y, ability.radius * 0.6, combat.deathPopSeconds * 1.5, PALETTE.player);
+      spawnRing(game.particles, player.x, player.y, ability.radius * 0.6, combat.deathPopSeconds * 1.5, PALETTE.player);
+      impact(game, 0.4, 0.05);
       break;
     case 'shield':
       player.shield = ability.seconds;
@@ -403,15 +448,47 @@ function useAbility(game, ability, controls) {
   }
 }
 
+// A few dots out of the gun tip with each shot.
+function muzzlePuff(game, weapon) {
+  const { player } = game;
+  const x = player.x + Math.cos(player.aim) * player.muzzle;
+  const y = player.y + Math.sin(player.aim) * player.muzzle;
+  spawnDots(game.particles, game.rng, x, y, 3, {
+    speedMin: 60, speedMax: 160, size: 1.2 + weapon.radius * 0.15, life: 0.15,
+    color: PALETTE.player, angle: player.aim, spread: 0.9, drag: 8,
+  });
+  sound(game, 'shot', weapon.radius / 5);
+}
+
+// Small bubbles left behind while moving fast.
+function emitTrail(game, dt) {
+  const { player } = game;
+  const fx = TUNING.effects;
+  game.trailTimer -= dt;
+  const speed = Math.hypot(player.vx, player.vy);
+  if (speed < fx.trailMinSpeed || game.trailTimer > 0) return;
+  game.trailTimer = fx.trailInterval;
+  const back = Math.atan2(player.vy, player.vx) + Math.PI;
+  spawnDots(game.particles, game.rng, player.x + Math.cos(back) * player.radius * 0.8,
+    player.y + Math.sin(back) * player.radius * 0.8, 1, {
+      speedMin: 10, speedMax: 40, size: 2.2, life: 0.6, color: PALETTE.player, angle: back, spread: 1.2, drag: 2,
+    });
+}
+
 function changeClass(game, classId) {
   const { player } = game;
+  const previousTier = CLASSES[player.classId].tier;
   setPlayerClass(player, CLASSES[classId]);
   game.unlocked.add(classId);
   game.playerTargets = [player, ...player.drones];
   const evo = TUNING.evolution;
   player.morph = evo.morphSeconds;
   player.invuln = Math.max(player.invuln, evo.morphInvulnSeconds);
-  spawnPop(game.pops, player.x, player.y, player.radius * 1.8, evo.morphSeconds, PALETTE.player);
+  spawnRing(game.particles, player.x, player.y, player.radius * 1.8, evo.morphSeconds, PALETTE.player);
+  spawnDots(game.particles, game.rng, player.x, player.y, 30, {
+    speedMin: 100, speedMax: 320, size: 3, life: 0.7, color: PALETTE.player,
+  });
+  sound(game, CLASSES[classId].tier > previousTier ? 'evolve' : 'devolve');
 }
 
 // Applies the player's pick from `game.pendingChoice` and resumes play.
@@ -443,6 +520,11 @@ export function updateGame(game, controls, dt) {
   if (game.pendingChoice || game.victoryPending) return;
   const { player } = game;
   const arenaRadius = TUNING.arena.radius;
+  game.shake = Math.max(0, game.shake - TUNING.effects.shakeDecay * dt);
+  if (game.hitPause > 0) {
+    game.hitPause -= dt;
+    return;
+  }
   game.time += dt;
   if (game.transition) {
     advanceTransition(game, dt);
@@ -456,10 +538,15 @@ export function updateGame(game, controls, dt) {
   for (let i = 0; i < shots; i++) {
     fireWeapon(game.playerShots, weapon, player.x, player.y, player.aim, player.muzzle, game.rng);
     applyRecoil(player, weapon.recoil);
+    muzzlePuff(game, weapon);
   }
+  emitTrail(game, dt);
 
   const cls = CLASSES[player.classId];
-  if (updateAbility(player.abilityState, cls.ability, controls.ability, dt)) useAbility(game, cls.ability, controls);
+  if (updateAbility(player.abilityState, cls.ability, controls.ability, dt)) {
+    useAbility(game, cls.ability, controls);
+    sound(game, 'ability');
+  }
 
   for (const e of game.enemies) updateEnemy(e, game, dt);
   resolveContacts(game);
@@ -471,6 +558,6 @@ export function updateGame(game, controls, dt) {
 
   const cleared = !game.enemies.some((e) => e.alive && !e.def.hazard);
   updatePickups(game.pickups, player, player.pickupRadius, pickupSettings, arenaRadius, game.onCollect, dt, cleared);
-  updatePops(game.pops, dt);
+  updateParticles(game.particles, dt);
   checkEvolution(game);
 }

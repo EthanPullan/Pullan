@@ -3,8 +3,8 @@ import { CLASSES } from '../data/classes.js';
 import { lerpAngle } from '../systems/movement.js';
 import { drawTank } from './tank.js';
 import { drawArena, drawGlow } from './arena.js';
-import { drawSpecks } from './background.js';
-import { drawPops, drawProjectiles, drawPickups } from './effects.js';
+import { drawSpecks, drawAmbient } from './background.js';
+import { drawParticles, drawProjectiles, drawPickups } from './effects.js';
 import { drawCollisionCircle } from '../ui/debug.js';
 import { rgba } from './color.js';
 import { solidSides } from '../world.js';
@@ -94,7 +94,7 @@ function drawDrones(ctx, player, alpha) {
 
 // Draws one frame of the world. `alpha` interpolates between the last two
 // simulation steps; `cam` is the interpolated camera position.
-export function renderScene(ctx, game, cam, view, specks, alpha, showDebug) {
+export function renderScene(ctx, game, cam, view, backdrop, alpha, showDebug) {
   const s = view.pxPerUnit;
   const worldTransform = () => ctx.setTransform(s, 0, 0, s, (view.w / 2 - cam.x) * s, (view.h / 2 - cam.y) * s);
   const { player } = game;
@@ -106,7 +106,8 @@ export function renderScene(ctx, game, cam, view, specks, alpha, showDebug) {
 
   // Background specks are in screen space, over the water and under the tanks.
   ctx.setTransform(s, 0, 0, s, 0, 0);
-  drawSpecks(ctx, specks, cam.x, cam.y, view, TUNING.background.tileSize, PALETTE.speck);
+  drawSpecks(ctx, backdrop.specks, cam.x, cam.y, view, TUNING.background.tileSize, PALETTE.speck);
+  drawAmbient(ctx, backdrop.ambient, cam.x, cam.y, view, TUNING.background.tileSize, game.time, PALETTE.speck);
 
   worldTransform();
   drawGlow(ctx, px, py, TUNING.lighting.playerGlowRadius, PALETTE.player, TUNING.lighting.playerGlowAlpha);
@@ -123,7 +124,7 @@ export function renderScene(ctx, game, cam, view, specks, alpha, showDebug) {
   drawWarnings(ctx, game, alpha);
   drawProjectiles(ctx, game.enemyShots, alpha, PALETTE.danger);
   drawProjectiles(ctx, game.playerShots, alpha, PALETTE.player);
-  drawPops(ctx, game.pops);
+  drawParticles(ctx, game.particles, alpha);
 
   drawDrones(ctx, player, alpha);
   drawShield(ctx, player, px, py, game.time);

@@ -11,7 +11,8 @@ import {
 import { nextScreen } from './screens.js';
 import { difficultyOf } from './world.js';
 import { clearSpriteCache } from './render/tank.js';
-import { createSpecks } from './render/background.js';
+import { createSpecks, createAmbient, drawVignette } from './render/background.js';
+import { createAudio } from './audio.js';
 import { renderScene } from './render/scene.js';
 import { drawHud } from './ui/hud.js';
 import { drawMinimap } from './ui/minimap.js';
@@ -44,7 +45,12 @@ const input = createInput(canvas, view);
 let seed = seedFromQuery(window.location.search);
 let game = createGame(createRng(seed));
 // Visual-only randomness gets its own generator so it never shifts gameplay.
-const specks = createSpecks(createRng(seed ^ 0x9e3779b9), TUNING.background);
+const visualRng = createRng(seed ^ 0x9e3779b9);
+const backdrop = {
+  specks: createSpecks(visualRng, TUNING.background),
+  ambient: createAmbient(visualRng, TUNING.background),
+};
+const audio = createAudio();
 const camera = createCamera(game.player.x, game.player.y);
 let cameraArena = game.arenaId;
 const debug = createDebug();
@@ -184,7 +190,7 @@ if (query.has('test')) {
   window.__test = {
     get game() { return game; },
     get screen() { return screen; },
-    camera, view, chooseClass, debugSpawn,
+    camera, view, chooseClass, debugSpawn, audio,
   };
 }
 
@@ -225,9 +231,17 @@ function render(alpha) {
     x: camera.prevX + (camera.x - camera.prevX) * alpha,
     y: camera.prevY + (camera.y - camera.prevY) * alpha,
   };
-  renderScene(ctx, game, cam, view, specks, alpha, debug.enabled);
+  // Screen shake: a jolt that grows with the square of the shake amount.
+  if (TUNING.effects.screenShake && game.shake > 0) {
+    const amount = game.shake * game.shake * TUNING.effects.shakeMax;
+    const t = performance.now() / 1000;
+    cam.x += amount * (Math.sin(t * 53) + Math.sin(t * 31.7)) / 2;
+    cam.y += amount * (Math.sin(t * 47.3) + Math.sin(t * 27.1)) / 2;
+  }
+  renderScene(ctx, game, cam, view, backdrop, alpha, debug.enabled);
 
   ctx.setTransform(view.pxPerUnit, 0, 0, view.pxPerUnit, 0, 0);
+  drawVignette(ctx, view, TUNING.background.vignette);
   const fade = fadeAmount(game);
   if (fade > 0) {
     ctx.fillStyle = `rgba(3, 13, 24, ${fade})`;
@@ -248,7 +262,7 @@ function render(alpha) {
       `pools    shots ${game.playerShots.activeCount}/${game.playerShots.capacity}`
         + `, enemy shots ${game.enemyShots.activeCount}/${game.enemyShots.capacity}`,
       `         pickups ${game.pickups.activeCount}/${game.pickups.capacity}`
-        + `, pops ${game.pops.activeCount}/${game.pops.capacity}`,
+        + `, particles ${game.particles.activeCount}/${game.particles.capacity}`,
       `class    ${player.classId}  path ${JSON.stringify(game.path)}`,
       `bubbles  ${player.bubbles}  = / - to add or remove 10, B spawn menu`,
       `bosses   beaten ${[...game.defeated].join(', ') || 'none'}`,
@@ -272,5 +286,7 @@ startLoop((elapsed) => {
     for (let i = 0; i < steps && !game.pendingChoice && !game.victoryPending; i++) step();
     lastAlpha = alpha;
   }
+  for (const s of game.sounds) audio.play(s.type, s.size);
+  game.sounds.length = 0;
   render(lastAlpha);
 });
