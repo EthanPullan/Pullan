@@ -238,13 +238,18 @@
 
     <h3>Electricity</h3>
     <ul>
-      <li>Energy charge: Alberta's Rate of Last Resort is fixed at about 12.0¢/kWh for 2025–2026 (EPCOR, ENMAX,
-        ATCO and FortisAlberta territories, via the Utilities Consumer Advocate). Before 2025 the old Regulated
-        Rate swung widely, from about 10¢ to over 30¢ in 2022–23. Fixed-rate retailer contracts can be lower.</li>
+      <li>Energy charge: the default is 8.29¢/kWh, in line with 2-year fixed-rate contracts offered in 2026 (for example
+        SPOT Power 8.29¢, Encor 8.25¢, Direct Energy 8.37¢; some come with a daily admin fee or a deposit). If you haven't
+        signed a contract you're on the Rate of Last Resort, fixed at about 12.0¢/kWh for 2025–2026. Before 2025 the old
+        Regulated Rate swung widely, from about 10¢ to over 30¢ in 2022–23.</li>
       <li>Delivery and fees: ENMAX's 2026 per-kWh transmission and distribution (about 5.45¢) plus Calgary's local
         access fee (about 1.55¢). Rural FortisAlberta customers and other cities differ, so check a recent bill.
         Only per-kWh charges are counted, since the daily fixed fees don't change when you add an EV. GST (5%) is added.</li>
       <li>Charging losses (about 10%) and the cold-weather allowance are applied on top of the car's rated efficiency.</li>
+      <li>Public charging: Paren's network data puts Alberta's average DC fast-charging price at $0.67/kWh in Q2 2026
+        (down from $0.72 a year earlier, against about $0.50 nationally; free chargers are excluded). Many Alberta
+        chargers bill by the minute or hour instead, for example Edmonton's Encor network at $18/hour for fast charging
+        and $2/hour for Level 2. Public Level 2 generally costs $1–$2.50 an hour, and some municipal sites are free.</li>
     </ul>
 
     <h3>Insurance, tax and rebate</h3>
@@ -396,16 +401,16 @@ const GROUPS = [
       hint: "Regular self-serve, Calgary and Edmonton average (StatCan)." },
     { id: "gasEsc", label: "Gas price change per year", who: "gas", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
       hint: "2% roughly tracks inflation." },
-    { id: "energyRate", label: "Electricity energy charge", who: "ev", min: 4, max: 35, step: 0.1, def: 12.0, fmt: "¢/kWh",
-      hint: "Rate of Last Resort is about 12.0¢ for 2025–26. Use your contract rate if you've signed one." },
+    { id: "energyRate", label: "Electricity energy charge", who: "ev", min: 4, max: 35, step: 0.1, def: 8.29, fmt: "¢/kWh",
+      hint: "8.29¢ is a typical 2-year fixed-rate contract in 2026. The default Rate of Last Resort, if you haven't signed one, is about 12.0¢." },
     { id: "delivery", label: "Electricity delivery and fees", who: "ev", min: 0, max: 15, step: 0.1, def: 7.0, fmt: "¢/kWh",
       hint: "Per-kWh transmission, distribution and local access fees (Calgary is about 7¢). GST is added for you." },
     { id: "elecEsc", label: "Electricity price change per year", who: "ev", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
       hint: "Also applied to the public charging price." },
-    { id: "homePct", label: "Charging done at home", who: "ev", min: 0, max: 100, step: 5, def: 85, fmt: "%",
-      hint: "The rest is at public fast chargers, mostly on road trips." },
-    { id: "publicPrice", label: "Public fast-charging price", who: "ev", min: 0.2, max: 1.0, step: 0.01, def: 0.50, fmt: "$/kWh",
-      hint: "Alberta fast chargers mostly cost $0.40–$0.60/kWh-equivalent, and some charge by the minute." },
+    { id: "awayPct", label: "Charged elsewhere (public chargers)", who: "ev", min: 0, max: 100, step: 5, def: 15, fmt: "%",
+      hint: "The share of charging not done at home, such as road trips, or living without a home charger. The rest is charged at home." },
+    { id: "publicPrice", label: "Average public charging price", who: "ev", min: 0, max: 1.0, step: 0.01, def: 0.67, fmt: "$/kWh",
+      hint: "Alberta's average fast-charging price is $0.67/kWh (Paren, mid-2026), among the highest in Canada. Public Level 2 is cheaper (about $1–$2.50 an hour), so lower this if you'll use those or get free charging at work." },
     { id: "chargeLoss", label: "Home charging losses", who: "ev", min: 0, max: 25, step: 1, def: 10, fmt: "%",
       hint: "Energy lost between the meter and the battery. Level 2 is typically 8–12%." },
   ]},
@@ -577,8 +582,9 @@ function simulate(p, kind, years) {
       if (ev) {
         const kwh = p.km / 100 * p.evEff * (1 + p.evWinter / 100);
         const homeRate = (p.energyRate + p.delivery) / 100 * 1.05;
-        energyYear = (kwh * p.homePct / 100 * (1 + p.chargeLoss / 100) * homeRate
-                    + kwh * (1 - p.homePct / 100) * p.publicPrice) * Math.pow(1 + p.elecEsc / 100, y - 1);
+        const away = p.awayPct / 100;
+        energyYear = (kwh * (1 - away) * (1 + p.chargeLoss / 100) * homeRate
+                    + kwh * away * p.publicPrice) * Math.pow(1 + p.elecEsc / 100, y - 1);
       } else {
         const litres = p.km / 100 * (keep ? p.keepEff : p.gasEff) * (1 + p.gasWinter / 100);
         energyYear = litres * p.gasCents / 100 * Math.pow(1 + p.gasEsc / 100, y - 1);
