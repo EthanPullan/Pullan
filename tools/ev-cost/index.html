@@ -273,8 +273,12 @@
         versus $550 a year reflect that. EVs can wear tires faster, which this range already allows for.</li>
       <li>Depreciation rates are estimates: roughly a third of the price remains after 8 years for a gas car and a
         quarter for an EV. Used-EV prices fell sharply in 2023–24, which makes this the most uncertain default here.</li>
-      <li>Resale value is worked out from the price after the rebate, on the basis that used prices follow what a car
-        effectively costs new.</li>
+      <li>All car prices are entered before tax and 5% GST is added (new cars always, a used EV only from a dealer).
+        Resale value is worked out from the pre-tax price, since GST isn't part of what a car is worth, and for a new
+        EV after the rebate, on the basis that used prices follow what a car effectively costs new.</li>
+      <li class="muted">Rebate and GST: the dealer is understood to apply GST to the full price first and then take the
+        rebate off, so the rebate doesn't reduce the GST. That's per most guides citing Transport Canada's dealer
+        guidance; one guide says the opposite, so confirm with the dealer.</li>
     </ul>
 
     <h3>Used EVs</h3>
@@ -335,9 +339,13 @@ const GAS_PRESETS = [
 const GROUPS = [
   { id: "vehicles", title: "New vehicles", sub: "price, rebate, charger", open: true, items: [
     { id: "gasPrice", label: "Gas car price", who: "gas", min: 15000, max: 100000, step: 500, def: 38000, fmt: "$",
-      hint: "Out-the-door price, including GST." },
+      hint: "The price before tax. 5% GST is added for you.",
+      note: p => `With GST you pay ${$(p.gasPrice * 1.05)}.` },
     { id: "evPrice", label: "New EV price", who: "ev", min: 20000, max: 120000, step: 500, def: 48000, fmt: "$",
-      hint: "Out-the-door price, before the rebate." },
+      hint: "The price before tax and before the rebate. 5% GST is added for you.",
+      note: p => p.rebate > 0
+        ? `GST is charged on the full price, then the rebate comes off: ${$(p.evPrice * 1.05)} − ${$(Math.min(p.rebate, p.evPrice * 1.05))} = ${$(p.evPrice * 1.05 - Math.min(p.rebate, p.evPrice * 1.05))}.`
+        : `With GST you pay ${$(p.evPrice * 1.05)}.` },
     { id: "rebate", label: "Federal EV rebate (new only)", who: "ev", min: 0, max: 5000, step: 250, def: 5000, fmt: "$",
       hint: "Electric Vehicle Affordability Program: up to $5,000 at the dealer in 2026, $4,000 from Jan 1, 2027. New cars only, one per person.",
       warn: p => p.evPrice > 50000 && p.rebate > 0 ? "Over $50,000, only EVs built in Canada qualify. Set this to $0 if yours isn't." : "" },
@@ -496,6 +504,7 @@ for (const g of GROUPS) {
       <div class="hint" id="h_${it.id}" data-default="${fmtVal(it, it.def)}">${it.hint}</div>
       ${it.presets ? `<div class="presets">${it.presets.map(p =>
         `<button type="button" data-for="${it.id}" data-v="${p.value}">${p.label} · ${p.value}¢</button>`).join("")}</div>` : ""}
+      ${it.note ? `<div class="note" id="o_${it.id}"></div>` : ""}
       ${it.warn ? `<div class="warn" id="w_${it.id}"></div>` : ""}`;
     body.appendChild(el);
   }
@@ -546,8 +555,12 @@ const OPTIONS = [
 // breakdown at the final year.
 function simulate(p, kind, years) {
   const keep = kind === "keep", used = kind === "uev", ev = kind === "ev" || used;
-  const price = keep ? 0 : used ? p.uevPrice * (p.uevSeller === 0 ? 1.05 : 1) : ev ? p.evPrice : p.gasPrice;
-  const rebate = kind === "ev" ? Math.min(p.rebate, price) : 0; // new EVs only
+  // Prices are entered before tax. New cars always pay 5% GST; a used EV only from a dealer.
+  const preTax = keep ? 0 : used ? p.uevPrice : ev ? p.evPrice : p.gasPrice;
+  const gst = used && p.uevSeller !== 0 ? 0 : 0.05;
+  const price = preTax * (1 + gst);
+  // The dealer applies GST to the full price first, then takes the rebate off (new EVs only).
+  const rebate = kind === "ev" ? Math.min(p.rebate, price) : 0;
   const net = price - rebate;
   const charger = ev ? p.charger : 0;
   // Used EV: battery allowance starts once the 8-year battery warranty runs out.
@@ -555,9 +568,9 @@ function simulate(p, kind, years) {
   // Keeping your car ties up what it could sell for today, so that counts as its starting cost.
   // (If you buy, it's sold to help pay, which is the same money, so it nets out.)
   const kept = keep ? p.keepValue : 0;
-  // Used prices track what the car effectively cost new, so the rebate lowers resale too.
-  // (A used EV's resale is based on its pre-tax asking price, since GST isn't part of what it's worth.)
-  const startValue = keep ? p.keepValue : used ? p.uevPrice : net;
+  // Resale starts from the pre-tax price: GST isn't part of what the car is worth. Used prices
+  // track what a car effectively costs new, so the rebate lowers a new EV's resale too.
+  const startValue = keep ? p.keepValue : Math.max(0, preTax - rebate);
   const dep = (keep ? p.keepDep : used ? p.uevDep : ev ? p.depEv : p.depGas) / 100;
   const ins0 = keep ? p.keepIns : used ? p.uevIns : ev ? p.insEv : p.insGas;
   const maint0 = keep ? p.keepMaint : used ? p.uevMaint : ev ? p.maintEv : p.maintGas;
