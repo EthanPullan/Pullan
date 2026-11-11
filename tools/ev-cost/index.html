@@ -415,7 +415,7 @@ const GROUPS = [
       hint: "Per-kWh transmission, distribution and local access fees (Calgary is about 7¢). GST is added for you." },
     { id: "elecEsc", label: "Electricity price change per year", who: "ev", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
       hint: "Also applied to the public charging price." },
-    { id: "awayPct", label: "Charged elsewhere (public chargers)", who: "ev", min: 0, max: 100, step: 5, def: 15, fmt: "%",
+    { id: "awayPct", label: "Charged elsewhere (public chargers)", who: "ev", min: 0, max: 100, step: 5, def: 5, fmt: "%",
       hint: "The share of charging not done at home, such as road trips, or living without a home charger. The rest is charged at home." },
     { id: "publicPrice", label: "Average public charging price", who: "ev", min: 0, max: 1.0, step: 0.01, def: 0.67, fmt: "$/kWh",
       hint: "Alberta's average fast-charging price is $0.67/kWh (Paren, mid-2026), among the highest in Canada. Public Level 2 is cheaper (about $1–$2.50 an hour), so lower this if you'll use those or get free charging at work." },
