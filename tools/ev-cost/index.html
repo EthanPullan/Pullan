@@ -93,7 +93,7 @@
   .legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;margin-bottom:4px;}
   .legend span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
   .legend i{width:16px;height:0;border-top:2px solid;display:inline-block;}
-  .chart{position:relative;}
+  .chart{position:relative;touch-action:pan-y;}
   .chart svg{display:block;width:100%;height:auto;overflow:visible;}
   .chart text{font-family:var(--sans);font-size:11px;fill:var(--muted);}
   .chart .lbl{font-size:11.5px;font-weight:600;fill:var(--ink);}
@@ -123,13 +123,31 @@
   .notes li{margin:3px 0;}
   .notes .muted{color:var(--muted);}
 
+  .short{display:none;}
   .mbar{display:none;}
   @media (max-width:900px){
     .layout{grid-template-columns:minmax(0,1fr);}
-    .results{position:static;}
-    .mbar{display:flex;position:sticky;top:0;z-index:5;gap:10px;align-items:center;justify-content:space-between;
-      background:var(--board);color:#eaf2ef;padding:9px 16px;font-size:13px;font-weight:600;}
-    .mbar a{color:#fbe6c8;font-weight:600;font-size:12px;}
+    .results{position:static;scroll-margin-top:12px;}
+    /* Live totals pinned to the bottom of the screen while you move sliders. */
+    .mbar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:5;text-decoration:none;
+      background:var(--board);color:#eaf2ef;padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+      box-shadow:0 -4px 14px rgba(20,40,33,.18);}
+    .mbar .mhead{display:flex;justify-content:space-between;font-size:11px;color:#b9cdc6;margin-bottom:5px;}
+    .mbar .mhead b{color:#fbe6c8;font-weight:600;}
+    .mbar .mrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+    .mbar .mc{background:rgba(255,255,255,.06);border-radius:7px;padding:5px 7px;border:1px solid transparent;min-width:0;}
+    .mbar .mc.best{border-color:#fbe6c8;background:rgba(251,230,200,.12);}
+    .mbar .mc .n{font-size:10.5px;color:#cfe0da;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .mbar .mc .n i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;}
+    .mbar .mc .t{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+    body{padding-bottom:calc(84px + env(safe-area-inset-bottom));}
+    /* Touch-sized controls; 16px inputs stop iOS zooming in on focus. */
+    .valbox input{font-size:16px;width:96px;padding:6px 8px;}
+    input[type=range]{height:32px;margin:4px 0 0;}
+    .presets button{padding:7px 12px;font-size:12.5px;}
+    .btn{padding:9px 12px;}
+    details.group > summary{padding:16px 18px;}
+    .full{display:none;} .short{display:inline;}
   }
   @media (max-width:620px){
     .wrap{padding:18px 16px 48px;}
@@ -145,10 +163,13 @@
 <header class="toolbar">
   <a class="brand" href="../../"><span class="mark"></span>Pullan <small>projects</small></a>
   <div class="spacer"></div>
-  <button class="btn" id="copyLink" type="button">Copy link to these settings</button>
-  <button class="btn" id="resetAll" type="button">Reset to Alberta defaults</button>
+  <button class="btn" id="copyLink" type="button"><span class="full">Copy link to these settings</span><span class="short">Copy link</span></button>
+  <button class="btn" id="resetAll" type="button"><span class="full">Reset to Alberta defaults</span><span class="short">Reset</span></button>
 </header>
-<div class="mbar" id="mbar"><span id="mbarText">…</span><a href="#results">See results ↓</a></div>
+<a class="mbar" id="mbar" href="#results" aria-label="Jump to full results">
+  <div class="mhead"><span id="mbarText">…</span><b>Full results ↓</b></div>
+  <div class="mrow" id="mbarRow"></div>
+</a>
 
 <main class="wrap">
   <section class="hero-intro">
@@ -420,7 +441,8 @@ const state = {};
 const controlsEl = document.getElementById("controls");
 for (const g of GROUPS) {
   const d = document.createElement("details");
-  d.className = "panel group"; d.open = g.open;
+  d.className = "panel group";
+  d.open = g.open && (g === GROUPS[0] || !matchMedia("(max-width:900px)").matches);
   d.innerHTML = `<summary>${g.title}${g.sub ? ` <span class="sub">${g.sub}</span>` : ""}</summary><div class="group-body"></div>`;
   const body = d.querySelector(".group-body");
   for (const it of g.items) {
@@ -433,7 +455,7 @@ for (const g of GROUPS) {
       <div class="ctl-head">
         <label for="r_${it.id}">${tag}${it.label}</label>
         <span class="valbox">${it.fmt === "$" ? '<span class="unit">$</span>' : ""}
-          <input type="number" id="n_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}" aria-label="${it.label}">
+          <input type="number" inputmode="decimal" id="n_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}" aria-label="${it.label}">
           ${unit ? `<span class="unit">${unit}</span>` : ""}</span>
       </div>
       <input type="range" id="r_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}">
@@ -607,7 +629,7 @@ function drawChart(series) {
   chartEl.insertAdjacentHTML("afterbegin", s);
   chartData = { series, x, y, n, W };
 }
-chartEl.addEventListener("pointermove", e => {
+function showTip(e) {
   if (!chartData) return;
   const svg = chartEl.querySelector("svg"), rect = svg.getBoundingClientRect();
   const scale = chartData.W / rect.width, px = (e.clientX - rect.left) * scale;
@@ -626,13 +648,18 @@ chartEl.addEventListener("pointermove", e => {
   const tx = x(i) / scale, tw = tip.offsetWidth;
   tip.style.left = (tx + 14 + tw > rect.width ? Math.max(0, tx - 14 - tw) : tx + 14) + "px";
   tip.style.top = "8px";
-});
-chartEl.addEventListener("pointerleave", () => {
+}
+chartEl.addEventListener("pointermove", showTip);
+chartEl.addEventListener("pointerdown", showTip);
+function hideTip() {
   tip.style.display = "none";
   const svg = chartEl.querySelector("svg"); if (!svg) return;
   svg.getElementById("xh").setAttribute("visibility", "hidden");
   svg.getElementById("hdots").setAttribute("visibility", "hidden");
-});
+}
+// With a mouse, hide on leave. With touch, keep it until the next tap outside the chart.
+chartEl.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hideTip(); });
+document.addEventListener("pointerdown", e => { if (!chartEl.contains(e.target)) hideTip(); });
 
 /* ---------- Render ---------- */
 const ROWS = [
@@ -669,7 +696,10 @@ function update() {
     (margin >= 50 ? `${$(margin)} cheaper than ${lc(ranked[1].o.name)}. ` : "") +
     `Totals: ${OPTIONS.map(o => `${lc(o.name)} ${neg(R[o.key].total)}`).join(", ")}.` +
     (p.keepLife < N ? ` Your current car may not last ${yrs}.` : "");
-  document.getElementById("mbarText").textContent = `Cheapest over ${yrs}: ${best.o.name}`;
+  document.getElementById("mbarText").textContent = `Total cost over ${yrs}`;
+  const kShort = v => (v < 0 ? "−" : "") + "$" + (Math.abs(v) >= 1000 ? Math.round(Math.abs(v) / 1000) + "k" : Math.round(Math.abs(v)));
+  document.getElementById("mbarRow").innerHTML = OPTIONS.map(o =>
+    `<div class="mc${o.key === best.o.key ? " best" : ""}"><div class="n"><i style="background:${o.color}"></i>${o.short}</div><div class="t">${kShort(R[o.key].total)}</div></div>`).join("");
 
   // One tile per option: total, gap to the cheapest, cost per km, and for EVs the break-even gas price.
   const km = p.km * N;
