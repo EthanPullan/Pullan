@@ -78,6 +78,7 @@ export function createTitleScreen({ onNew, onContinue }) {
         <button type="button" class="overlay-button" data-action="continue">Continue <span class="key">Enter</span></button>
         <button type="button" class="overlay-button" data-action="new"></button>
       </div>
+      <a class="back-link" href="../../">← All projects</a>
     </div>`);
   const continueButton = root.querySelector('[data-action="continue"]');
   const newButton = root.querySelector('[data-action="new"]');

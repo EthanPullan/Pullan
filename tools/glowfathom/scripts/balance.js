@@ -1,8 +1,8 @@
-// Balance report. Run with:  node tools/balance.js
+// Balance report. Run with:  node scripts/balance.js
 //
 // 1. Time to kill: for every form against every enemy, from the data files,
 //    assuming every shot hits. Bosses include their parts.
-// 2. Pacing: the real game played in Node by a scripted player (tools/bot.js),
+// 2. Pacing: the real game played in Node by a scripted player (scripts/bot.js),
 //    once per final form and seed, reporting when it reached tier 2, tier 3
 //    and each boss, against the pacing targets.
 

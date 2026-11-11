@@ -833,3 +833,14 @@ Other changes:
 Not verified: pacing with a real person. The scripted player never dodges;
 the owner's full run is the real test.
 
+### Session 11: moved into a projects repository
+
+The repository now holds several projects. The game moved, with its
+history, from the repository root to `tools/glowfathom/`; its `tools/`
+folder (the balance report) was renamed `scripts/`. Run `npm test` and
+`npm run balance` from `tools/glowfathom/`. The title screen has a link
+back to the projects landing page at the repository root. Verified: all
+136 tests pass from the new folder, the balance report gives the same
+results, and in headless Chromium the landing page links to the game, the
+game starts and pauses, and the back link returns, with no errors.
+

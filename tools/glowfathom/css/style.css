@@ -324,3 +324,17 @@ canvas {
   min-width: 3em;
   opacity: 0.75;
 }
+
+/* Link back to the projects landing page, on the title screen */
+.back-link {
+  display: inline-block;
+  margin-top: 22px;
+  font-size: 13px;
+  color: rgba(232, 251, 255, 0.6);
+  text-decoration: none;
+}
+
+.back-link:hover,
+.back-link:focus-visible {
+  color: #5ef2e0;
+}

@@ -2,6 +2,6 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "balance": "node tools/balance.js"
+    "balance": "node scripts/balance.js"
   }
 }

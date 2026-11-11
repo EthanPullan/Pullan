@@ -1,19 +1,15 @@
-# Glowfathom
+# Pullan Projects
 
-A browser game set in the deep sea. You start as a tiny glowing tank made of
-bubbles. Pop the creatures around you, collect the bubbles they drop, and
-grow into one of ten forms across three branches. Get hit and bubbles are
-knocked out of you; lose enough and you shrink back. Explore a 7×7 grid of
-arenas that gets harder toward the edges, and find the two guardians in the
-corners.
+A home for various projects. Each lives in its own folder under `tools/`,
+and the landing page (`index.html`) links to all of them.
 
-No install, no build step, no dependencies: plain JavaScript and the HTML
-canvas.
+| Project | Folder | What it is |
+|---|---|---|
+| Glowfathom | [`tools/glowfathom/`](tools/glowfathom/) | A deep-sea arena shooter in the browser ([README](tools/glowfathom/README.md)) |
 
-## Run it
+## Run it locally
 
-Browsers only load JavaScript modules over HTTP, so serve the folder with
-any static web server. With Python:
+Serve the repository root with any static web server, for example:
 
 ```bash
 python3 -m http.server 8000
@@ -21,88 +17,18 @@ python3 -m http.server 8000
 
 Then open <http://localhost:8000>.
 
-To publish it, upload the folder as-is to any static host (GitHub Pages,
-Netlify, an S3 bucket). Only `index.html`, `css/` and `js/` are needed.
+## Publish it
 
-## Controls
+The repository works as-is on GitHub Pages (Settings → Pages → deploy from
+the `main` branch, root folder). The `.nojekyll` file stops GitHub's Jekyll
+step from interfering with the files.
 
-| Input | Action |
-|---|---|
-| WASD | Move |
-| Mouse | Aim |
-| Left click | Fire |
-| Right click | Ability (final forms only) |
-| Hold a movement key into an edge | Cross into the next arena |
-| Esc, or the pause button | Pause |
-| 1, 2, 3 | Pick a form when evolving |
-| T / O / R (paused) | Class tree / settings / restart |
+## Adding a project
 
-Your run saves itself every time you change arena or pause; the title
-screen offers Continue.
+1. Create `tools/<project-name>/` with its own `index.html`.
+2. Add a card for it to the grid in the root `index.html`, copying the
+   existing card. The project count in the top bar updates itself.
+3. Add a row to the table above.
 
-## Debug tools
-
-Add `?debug` to the address (<http://localhost:8000/?debug>), then press F3
-for the overlay. With the overlay open:
-
-| Key | Action |
-|---|---|
-| = / - | Add or remove 50 bubbles |
-| B | Spawn menu: any enemy or boss |
-| P | Add 300 enemies (stress test) |
-
-`?seed=123` makes a run repeatable. `?test` exposes the game to automated
-browser checks.
-
-## Changing the balance
-
-Every number lives in `js/data/`:
-
-| File | What it holds |
-|---|---|
-| `tuning.js` | Evolution thresholds, movement, camera, pickups, arena size, effects |
-| `classes.js` | The ten forms: speed, pickup radius, weapon, ability, body shape |
-| `weapons.js` | Every weapon: fire rate, damage, speed, spread, special behaviour |
-| `enemies.js` | Every enemy and boss, their attacks, and the arena rosters |
-
-After a change, run the balance report:
-
-```bash
-npm run balance
-```
-
-It prints how long each form takes to kill each enemy, then plays the real
-game in Node with a scripted player once per final form and reports when it
-reached tier 2, tier 3 and each boss, against the pacing targets (3, 10 and
-20 minutes). It takes about half a minute. The scripted player never
-dodges, so treat its times as a rough guide, not a promise.
-
-## Tests
-
-```bash
-npm test
-```
-
-Runs the unit and game-rule tests with Node's built-in test runner (Node 18
-or later). Game rules are kept free of browser code so they can be tested
-this way.
-
-## Layout
-
-```
-index.html, css/style.css
-js/main.js          browser wiring: canvas, input, screens, saving, loop
-js/game.js          world state and the fixed-step update
-js/screens.js       which screen moves are allowed
-js/save.js          save format and validation
-js/world.js         the arena grid
-js/audio.js         synthesised sound
-js/data/            every tunable number
-js/entities/        player and enemies
-js/systems/         game rules: movement, weapons, attacks, evolution, ...
-js/render/          drawing
-js/ui/              HUD, minimap, menus
-tools/              balance report and its scripted player
-tests/              Node tests
-BUILD_CHECKLIST.md  the build plan, with a log of every session
-```
+The landing page follows the same look as the Teaching Tools suite: forest
+green, amber accents, white cards on a light grey background.
