@@ -12,7 +12,7 @@
     --app-bg:#e9edf0; --panel:#fff; --panel-2:#f4f6f8;
     --ink:#16241f; --muted:#67756f; --line:#d8dee2; --grid:#e6eaed;
     --board:#1f3d35; --accent:#e0982e; --accent-soft:#fbe6c8;
-    --gas:#c9821f; --ev:#2f6f9f; --keep:#2aa198; --ev-soft:#dde9f3; --gas-soft:#fbe6c8;
+    --gas:#c9821f; --ev:#2f6f9f; --keep:#2aa198; --uev:#b8457a; --ev-soft:#dde9f3; --gas-soft:#fbe6c8;
     --warn-ink:#8a5a12; --warn-bg:#fdf3e1;
     --shadow:0 1px 2px rgba(20,40,33,.06),0 6px 18px rgba(20,40,33,.06); --radius:12px;
     --sans:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -83,14 +83,15 @@
   .tile{background:var(--panel);padding:13px 14px;}
   .tile .k{font-size:11.5px;color:var(--muted);}
   .tile .v{font-size:18px;font-weight:700;margin-top:3px;}
-  .tile .v.sm{font-size:15px;}
+  .tile .k .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:0;}
+  .tile.best{box-shadow:inset 0 3px 0 var(--board);}
   .tile .s{font-size:11.5px;color:var(--muted);margin-top:2px;}
 
   .chart-panel{padding:16px 18px 12px;}
   .chart-panel h2,.table-panel h2{margin:0;font-size:14.5px;}
   .chart-panel .cap{margin:3px 0 8px;font-size:12px;color:var(--muted);}
-  .legend{display:flex;gap:16px;font-size:12.5px;margin-bottom:4px;}
-  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;margin-bottom:4px;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
   .legend i{width:16px;height:0;border-top:2px solid;display:inline-block;}
   .chart{position:relative;}
   .chart svg{display:block;width:100%;height:auto;overflow:visible;}
@@ -110,7 +111,8 @@
   thead th{font-size:11.5px;color:var(--muted);font-weight:600;}
   tbody tr:last-child td{border-bottom:none;}
   tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:none;}
-  td.diff{color:var(--muted);}
+  td.num,th{white-space:nowrap;}
+  .tscroll{overflow-x:auto;}
   .table-panel details{margin-top:10px;font-size:12.5px;}
   .table-panel summary{cursor:pointer;color:var(--board);font-weight:600;}
 
@@ -132,6 +134,8 @@
   @media (max-width:620px){
     .wrap{padding:18px 16px 48px;}
     .tiles{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .table-panel{padding:16px 12px;}
+    .table-panel table{font-size:11.5px;} .table-panel th,.table-panel td{padding:6px 2px;}
     .verdict .big{font-size:28px;}
   }
 </style>
@@ -149,10 +153,10 @@
 <main class="wrap">
   <section class="hero-intro">
     <h1>Should I switch to an EV?</h1>
-    <p>Compare three choices in Alberta: keep the car you have, buy a new gas car, or buy an EV. It counts the
+    <p>Compare four choices in Alberta: keep the car you have, buy a new gas car, buy a new EV, or buy a used EV. It counts the
       purchase, rebate, financing, fuel versus charging, insurance, maintenance, the provincial EV tax, resale
       value, and the investment growth you give up on money spent on the car. Most sliders start on a
-      researched Alberta figure (sources at the bottom). Set the "current car" sliders to your own car.</p>
+      researched Alberta figure (sources at the bottom). Set the "current car" and "used EV" sliders to the cars you're looking at.</p>
   </section>
 
   <div class="layout">
@@ -165,33 +169,28 @@
           <div class="big num" id="vBig">…</div>
           <div class="line" id="vLine"></div>
         </div>
-        <div class="tiles">
-          <div class="tile"><div class="k">EV vs keeping your car</div><div class="v num" id="tVsKeep">…</div><div class="s" id="tVsKeepS"></div></div>
-          <div class="tile"><div class="k">EV vs a new gas car</div><div class="v num" id="tVsGas">…</div><div class="s" id="tVsGasS"></div></div>
-          <div class="tile"><div class="k">Growth given up by buying the EV</div><div class="v num" id="tGrowth">…</div><div class="s" id="tGrowthS"></div></div>
-          <div class="tile"><div class="k">Cost per km</div><div class="v sm num" id="tKm">…</div><div class="s">keep · gas · EV</div></div>
-        </div>
+        <div class="tiles" id="tiles"></div>
       </section>
 
       <section class="panel chart-panel">
         <h2>Total cost if you sell at the end of each year</h2>
         <p class="cap">Everything you've paid so far plus the investment growth it cost you, minus what the car would sell for. Where lines cross, the cheaper choice changes.</p>
-        <div class="legend"><span><i style="border-color:var(--keep);border-top-style:dashed"></i>Keep your car</span><span><i style="border-color:var(--gas)"></i>New gas car</span><span><i style="border-color:var(--ev)"></i>EV</span></div>
+        <div class="legend" id="legend"></div>
         <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
       </section>
 
       <section class="panel table-panel">
         <h2 id="bdTitle">Where the money goes</h2>
-        <table>
-          <thead><tr><th>Cost</th><th>Keep</th><th>Gas car</th><th>EV</th></tr></thead>
+        <div class="tscroll"><table>
+          <thead><tr id="bdHead"></tr></thead>
           <tbody id="bdBody"></tbody>
           <tfoot id="bdFoot"></tfoot>
-        </table>
+        </table></div>
         <p class="hint" style="margin:8px 0 0">Every option starts from the car you own today. If you keep it, its current value
           counts as a cost because you could have sold it. If you buy, it's sold to help pay, so that value nets out.</p>
         <details>
           <summary>Year-by-year numbers</summary>
-          <table><thead><tr><th>Sell after</th><th>Keep</th><th>Gas car</th><th>EV</th></tr></thead><tbody id="yrBody"></tbody></table>
+          <table><thead><tr id="yrHead"></tr></thead><tbody id="yrBody"></tbody></table>
         </details>
       </section>
     </div>
@@ -229,9 +228,11 @@
       <li>Alberta charges a $200 annual tax on battery-electric vehicles at registration, in addition to normal
         registration (plug-in hybrids are exempt). Normal registration costs the same for both, so it's left out.</li>
       <li>Federal Electric Vehicle Affordability Program (from February 2026): up to $5,000 off a new battery-electric
-        vehicle at the dealer, with a $50,000 transaction cap unless the car is built in Canada, eligible countries of
-        manufacture only, and one rebate per person. The amounts are scheduled to decline in later years, so confirm
-        the current figure with the dealer.</li>
+        vehicle at the dealer, falling to $4,000 on January 1, 2027. There's a $50,000 transaction cap unless the car is
+        built in Canada, only eligible countries of manufacture qualify, and it's one rebate per person.</li>
+      <li>Used EVs get no rebate in Alberta: the federal program only covers vehicles registered for the first time,
+        and Alberta has no provincial EV rebate, new or used. (Some other provinces, such as Quebec, do offer
+        used-EV rebates.)</li>
     </ul>
 
     <h3>Maintenance and resale</h3>
@@ -242,6 +243,19 @@
         quarter for an EV. Used-EV prices fell sharply in 2023–24, which makes this the most uncertain default here.</li>
       <li>Resale value is worked out from the price after the rebate, on the basis that used prices follow what a car
         effectively costs new.</li>
+    </ul>
+
+    <h3>Used EVs</h3>
+    <ul>
+      <li>The used EV uses the same driving, charging, electricity and home-charger settings as the new EV, so it
+        assumes a similar model. It pays the $200 Alberta EV tax as well.</li>
+      <li>Battery: most EVs from 2020 on carry an 8-year / 160,000 km battery warranty that transfers to later owners.
+        The calculator works out how many warranty years are left from the car's age, then adds your battery allowance
+        for each year after that. Check the odometer too, because high-mileage cars can reach the km limit first. A
+        third-party battery health report costs about $100–$150, and recent data across 30 brands puts the average
+        battery health around 93%.</li>
+      <li>Used-EV prices were volatile in 2026: a record drop in March, then a rebound as inventory thinned and gas
+        prices rose. The used-EV insurance, maintenance and depreciation defaults are estimates, not Alberta data.</li>
     </ul>
 
     <h3>Your current car and the cost of money</h3>
@@ -284,16 +298,32 @@ const GAS_PRESETS = [
 
 /* ---------- Slider definitions ---------- */
 const GROUPS = [
-  { id: "vehicles", title: "The two vehicles", sub: "price, rebate, charger", open: true, items: [
+  { id: "vehicles", title: "New vehicles", sub: "price, rebate, charger", open: true, items: [
     { id: "gasPrice", label: "Gas car price", who: "gas", min: 15000, max: 100000, step: 500, def: 38000, fmt: "$",
       hint: "Out-the-door price, including GST." },
-    { id: "evPrice", label: "EV price", who: "ev", min: 20000, max: 120000, step: 500, def: 48000, fmt: "$",
+    { id: "evPrice", label: "New EV price", who: "ev", min: 20000, max: 120000, step: 500, def: 48000, fmt: "$",
       hint: "Out-the-door price, before the rebate." },
-    { id: "rebate", label: "Federal EV rebate", who: "ev", min: 0, max: 5000, step: 250, def: 5000, fmt: "$",
-      hint: "Electric Vehicle Affordability Program: up to $5,000 at the dealer, new cars only, one per person.",
+    { id: "rebate", label: "Federal EV rebate (new only)", who: "ev", min: 0, max: 5000, step: 250, def: 5000, fmt: "$",
+      hint: "Electric Vehicle Affordability Program: up to $5,000 at the dealer in 2026, $4,000 from Jan 1, 2027. New cars only, one per person.",
       warn: p => p.evPrice > 50000 && p.rebate > 0 ? "Over $50,000, only EVs built in Canada qualify. Set this to $0 if yours isn't." : "" },
     { id: "charger", label: "Home charger, installed", who: "ev", min: 0, max: 4000, step: 100, def: 1800, fmt: "$",
       hint: "A Level 2 charger and install typically costs $1,200–$2,500. Use $0 if you'll plug into a regular outlet." },
+  ]},
+  { id: "used", title: "Used EV", sub: "no rebate in Alberta", open: true, items: [
+    { id: "uevPrice", label: "Used EV price", who: "uev", min: 5000, max: 80000, step: 500, def: 30000, fmt: "$",
+      hint: "Out-the-door price (dealer sales include GST, private sales don't). No rebate: the federal one is for new cars only, and Alberta has none." },
+    { id: "uevAge", label: "Its age when you buy it", who: "uev", min: 0, max: 12, step: 1, def: 3, fmt: "yr",
+      hint: "Used to work out how much of the usual 8-year / 160,000 km battery warranty is left." },
+    { id: "uevBatt", label: "Battery allowance once the warranty ends", who: "uev", min: 0, max: 3000, step: 50, def: 400, fmt: "$/yr",
+      hint: "Set aside each year after the battery warranty runs out. Most batteries outlast the car, but an out-of-warranty replacement can cost five figures." },
+    { id: "uevIns", label: "Used EV insurance", who: "uev", min: 800, max: 7000, step: 50, def: 3000, fmt: "$/yr",
+      hint: "Estimate: a bit below the new-EV average, since the car is worth less. Get a quote." },
+    { id: "uevMaint", label: "Used EV maintenance", who: "uev", min: 0, max: 3000, step: 50, def: 700, fmt: "$/yr",
+      hint: "A little above a new EV, since its general warranty will run out sooner." },
+    { id: "uevDep", label: "Used EV value lost per year", who: "uev", min: 0, max: 30, step: 0.5, def: 12, fmt: "%/yr",
+      hint: "A used EV has already taken the steepest drop. Used-EV prices swung a lot in 2026." },
+    { id: "uevApr", label: "Used car loan interest rate", who: "uev", min: 0, max: 18, step: 0.1, def: 8.0, fmt: "%",
+      hint: "Used-car loans usually cost a point or two more than new. Loan term and down payment are shared with the new cars." },
   ]},
   { id: "current", title: "Your current car", sub: "if you keep it", open: true, items: [
     { id: "keepValue", label: "What it would sell for today", who: "keep", min: 0, max: 40000, step: 250, def: 8000, fmt: "$",
@@ -366,7 +396,7 @@ const GROUPS = [
     { id: "invest", label: "Expected investment return", min: 0, max: 12, step: 0.5, def: 5, fmt: "%/yr",
       hint: "What money not spent on the car would earn. Set to 0% to ignore investment growth." },
     { id: "apr", label: "Loan interest rate", min: 0, max: 15, step: 0.1, def: 6.5, fmt: "%",
-      hint: "Applies to either new car. Set the down payment to 100% if paying cash." },
+      hint: "For the new cars (the used EV has its own rate). Set the down payment to 100% if paying cash." },
     { id: "term", label: "Loan term", min: 12, max: 96, step: 12, def: 72, fmt: "months",
       hint: "If you sell before it's paid off, the remaining balance comes out of the sale." },
     { id: "down", label: "Down payment", min: 0, max: 100, step: 5, def: 20, fmt: "%",
@@ -396,7 +426,7 @@ for (const g of GROUPS) {
   for (const it of g.items) {
     state[it.id] = it.def;
     const unit = it.fmt === "$" ? "" : it.fmt;
-    const tag = it.who ? `<span class="tag" style="background:var(--${it.who})" title="${{ ev: "EV", gas: "New gas car", keep: "Your current car" }[it.who]}"></span>` : "";
+    const tag = it.who ? `<span class="tag" style="background:var(--${it.who})" title="${{ ev: "New EV", gas: "New gas car", keep: "Your current car", uev: "Used EV" }[it.who]}"></span>` : "";
     const el = document.createElement("div");
     el.className = "ctl";
     el.innerHTML = `
@@ -442,7 +472,8 @@ controlsEl.addEventListener("click", e => {
 const OPTIONS = [
   { key: "keep", name: "Keep your car", short: "Keep", color: "var(--keep)", dash: "6 4" },
   { key: "gas", name: "New gas car", short: "Gas", color: "var(--gas)" },
-  { key: "ev", name: "EV", short: "EV", color: "var(--ev)" },
+  { key: "ev", name: "New EV", short: "New EV", color: "var(--ev)" },
+  { key: "uev", name: "Used EV", short: "Used EV", color: "var(--uev)", dash: "1 4" },
 ];
 
 // Month-by-month cash flows for one option. Each month's money out is grown at the
@@ -450,33 +481,35 @@ const OPTIONS = [
 // Returns, for each year 1..years, the cost if sold at the end of that year, plus a
 // breakdown at the final year.
 function simulate(p, kind, years) {
-  const keep = kind === "keep", ev = kind === "ev";
-  const price = keep ? 0 : ev ? p.evPrice : p.gasPrice;
-  const rebate = ev ? Math.min(p.rebate, price) : 0;
+  const keep = kind === "keep", used = kind === "uev", ev = kind === "ev" || used;
+  const price = keep ? 0 : used ? p.uevPrice : ev ? p.evPrice : p.gasPrice;
+  const rebate = kind === "ev" ? Math.min(p.rebate, price) : 0; // new EVs only
   const net = price - rebate;
   const charger = ev ? p.charger : 0;
+  // Used EV: battery allowance starts once the 8-year battery warranty runs out.
+  const warrantyLeft = used ? Math.max(0, 8 - p.uevAge) : Infinity;
   // Keeping your car ties up what it could sell for today, so that counts as its starting cost.
   // (If you buy, it's sold to help pay, which is the same money, so it nets out.)
   const kept = keep ? p.keepValue : 0;
   // Used prices track what the car effectively cost new, so the rebate lowers resale too.
   const startValue = keep ? p.keepValue : net;
-  const dep = (keep ? p.keepDep : ev ? p.depEv : p.depGas) / 100;
-  const ins0 = keep ? p.keepIns : ev ? p.insEv : p.insGas;
-  const maint0 = keep ? p.keepMaint : ev ? p.maintEv : p.maintGas;
+  const dep = (keep ? p.keepDep : used ? p.uevDep : ev ? p.depEv : p.depGas) / 100;
+  const ins0 = keep ? p.keepIns : used ? p.uevIns : ev ? p.insEv : p.insGas;
+  const maint0 = keep ? p.keepMaint : used ? p.uevMaint : ev ? p.maintEv : p.maintGas;
   const maintEsc = keep ? p.keepMaintGrowth : p.costEsc;
   const tax = ev ? p.evTax : 0;
 
   // Loan
   let bal = keep ? 0 : net * (1 - p.down / 100);
-  const r = p.apr / 100 / 12, n = p.term;
+  const r = (used ? p.uevApr : p.apr) / 100 / 12, n = p.term;
   const pay = bal <= 0 ? 0 : r > 0 ? bal * r / (1 - Math.pow(1 + r, -n)) : bal / n;
 
   const rm = Math.pow(1 + p.invest / 100, 1 / 12) - 1;
   const upfront = kept + net - bal + charger;
   let fv = upfront, nominal = upfront;
-  const b = { purchase: net, kept, charger, interest: 0, energy: 0, insurance: 0, maintenance: 0, tax: 0, resale: 0, growth: 0 };
+  const b = { purchase: net, kept, charger, interest: 0, energy: 0, insurance: 0, maintenance: 0, battery: 0, tax: 0, resale: 0, growth: 0 };
   const netCost = [];
-  let energyYear = 0, insYear = 0, maintYear = 0;
+  let energyYear = 0, insYear = 0, maintYear = 0, battYear = 0;
 
   for (let m = 1; m <= years * 12; m++) {
     const y = Math.ceil(m / 12);
@@ -492,9 +525,11 @@ function simulate(p, kind, years) {
       }
       insYear = ins0 * Math.pow(1 + p.costEsc / 100, y - 1);
       maintYear = maint0 * Math.pow(1 + maintEsc / 100, y - 1);
+      battYear = y > warrantyLeft ? p.uevBatt : 0;
     }
-    let cf = (energyYear + insYear + maintYear + tax) / 12;
-    b.energy += energyYear / 12; b.insurance += insYear / 12; b.maintenance += maintYear / 12; b.tax += tax / 12;
+    let cf = (energyYear + insYear + maintYear + battYear + tax) / 12;
+    b.energy += energyYear / 12; b.insurance += insYear / 12; b.maintenance += maintYear / 12;
+    b.battery += battYear / 12; b.tax += tax / 12;
     if (bal > 1e-6) {
       const i = bal * r, principal = Math.min(pay - i, bal);
       bal -= principal; b.interest += i; cf += i + principal;
@@ -515,16 +550,18 @@ function simulate(p, kind, years) {
 function compute(p) {
   const res = {};
   for (const o of OPTIONS) res[o.key] = simulate(p, o.key, p.years);
-  // Gas price at which the EV costs the same as another option (that option's cost rises with gas price).
-  const breakGas = other => {
-    const diffAt = c => simulate({ ...p, gasCents: c }, other, p.years).total - res.ev.total;
+  // Gas price at which an EV costs the same as a gas option (that option's cost rises with gas price).
+  const breakGas = (evKey, other) => {
+    const diffAt = c => simulate({ ...p, gasCents: c }, other, p.years).total - res[evKey].total;
     if (diffAt(0) >= 0) return 0;
     if (diffAt(1000) < 0) return Infinity;
     let lo = 0, hi = 1000;
     for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; diffAt(m) < 0 ? lo = m : hi = m; }
     return (lo + hi) / 2;
   };
-  return { res, breakKeep: breakGas("keep"), breakGasCar: breakGas("gas") };
+  const breaks = {};
+  for (const k of ["ev", "uev"]) breaks[k] = { keep: breakGas(k, "keep"), gas: breakGas(k, "gas") };
+  return { res, breaks };
 }
 
 /* ---------- Chart ---------- */
@@ -537,7 +574,7 @@ function niceStep(range) {
 }
 function drawChart(series) {
   const W = Math.max(300, chartEl.clientWidth), Hh = Math.round(Math.min(300, Math.max(200, W * 0.45)));
-  const m = { t: 14, r: 58, b: 26, l: 52 };
+  const m = { t: 14, r: 66, b: 26, l: 52 };
   const n = series[0].data.length;
   const all = series.flatMap(s => s.data);
   let lo = Math.min(0, ...all), hi = Math.max(...all);
@@ -599,23 +636,26 @@ chartEl.addEventListener("pointerleave", () => {
 
 /* ---------- Render ---------- */
 const ROWS = [
-  ["kept", "Your current car's value today"], ["purchase", "New car, after rebate"], ["charger", "Home charger"],
+  ["kept", "Your current car's value today"], ["purchase", "Car price, after any rebate"], ["charger", "Home charger"],
   ["interest", "Loan interest"], ["energy", "Fuel or electricity"], ["insurance", "Insurance"],
-  ["maintenance", "Maintenance and repairs"], ["tax", "Alberta EV tax"], ["resale", "Resale value at the end"],
+  ["maintenance", "Maintenance and repairs"], ["battery", "Battery allowance (after warranty)"], ["tax", "Alberta EV tax"], ["resale", "Resale value at the end"],
   ["growth", "Investment growth given up"],
 ];
+const lc = name => name[0].toLowerCase() + name.slice(1); // "Used EV" -> "used EV"
 const signed = v => (v > 0.5 ? "+" : v < -0.5 ? "−" : "") + $(Math.abs(v));
 const neg = v => (v < -0.5 ? "−" : "") + $(Math.abs(v));
 
-function cmpTile(id, diff) {
-  document.getElementById(id).textContent =
-    Math.abs(diff) < 50 ? "About even" : (diff > 0 ? "EV saves " : "EV costs ") + $(Math.abs(diff)) + (diff > 0 ? "" : " more");
+function gasPrice(bg) {
+  if (bg === 0) return "any price";
+  if (!isFinite(bg) || bg > 999) return "over $10/L";
+  return `${bg.toFixed(0)}¢/L`;
 }
-function gasNote(bg) {
-  if (bg === 0) return "cheaper even if gas were free";
-  if (!isFinite(bg) || bg > 999) return "no realistic gas price closes the gap";
-  return `breaks even at ${bg.toFixed(0)}¢/L gas`;
-}
+const swatch = o => o.dash
+  ? `<i style="border-color:${o.color};border-top-style:${o.dash.startsWith("1") ? "dotted" : "dashed"}"></i>`
+  : `<i style="border-color:${o.color}"></i>`;
+document.getElementById("legend").innerHTML = OPTIONS.map(o => `<span>${swatch(o)}${o.name}</span>`).join("");
+document.getElementById("bdHead").innerHTML = "<th>Cost</th>" + OPTIONS.map(o => `<th>${o.short}</th>`).join("");
+document.getElementById("yrHead").innerHTML = "<th>Sell after</th>" + OPTIONS.map(o => `<th>${o.short}</th>`).join("");
 
 function update() {
   const p = state, r = compute(p), N = p.years, R = r.res;
@@ -626,21 +666,23 @@ function update() {
   document.getElementById("vEyebrow").textContent = `Cheapest over ${yrs} and ${(p.km * N).toLocaleString("en-CA")} km`;
   document.getElementById("vBig").textContent = margin < 50 ? `${best.o.name} or ${ranked[1].o.name}, about even` : best.o.name;
   document.getElementById("vLine").textContent =
-    (margin >= 50 ? `${$(margin)} cheaper than ${ranked[1].o.name.toLowerCase()}. ` : "") +
-    `Totals: ${OPTIONS.map(o => `${o.name.toLowerCase().replace("ev", "EV")} ${neg(R[o.key].total)}`).join(", ")}.` +
+    (margin >= 50 ? `${$(margin)} cheaper than ${lc(ranked[1].o.name)}. ` : "") +
+    `Totals: ${OPTIONS.map(o => `${lc(o.name)} ${neg(R[o.key].total)}`).join(", ")}.` +
     (p.keepLife < N ? ` Your current car may not last ${yrs}.` : "");
   document.getElementById("mbarText").textContent = `Cheapest over ${yrs}: ${best.o.name}`;
 
-  cmpTile("tVsKeep", R.keep.total - R.ev.total);
-  document.getElementById("tVsKeepS").textContent = gasNote(r.breakKeep);
-  cmpTile("tVsGas", R.gas.total - R.ev.total);
-  document.getElementById("tVsGasS").textContent = gasNote(r.breakGasCar);
-  const lost = R.ev.breakdown.growth - R.keep.breakdown.growth;
-  document.getElementById("tGrowth").textContent = p.invest > 0 ? $(Math.max(0, lost)) : "Off";
-  document.getElementById("tGrowthS").textContent = p.invest > 0
-    ? `more than keeping your car, at ${p.invest}% a year (already in the totals)` : "investment return is set to 0%";
+  // One tile per option: total, gap to the cheapest, cost per km, and for EVs the break-even gas price.
   const km = p.km * N;
-  document.getElementById("tKm").textContent = OPTIONS.map(o => `${(R[o.key].total / km * 100).toFixed(0)}¢`).join(" · ");
+  document.getElementById("tiles").innerHTML = OPTIONS.map(o => {
+    const t = R[o.key].total, gap = t - best.t, isBest = o.key === best.o.key;
+    const bk = r.breaks[o.key];
+    return `<div class="tile${isBest ? " best" : ""}">
+      <div class="k"><span class="dot" style="background:${o.color}"></span>${o.name}</div>
+      <div class="v num">${neg(t)}</div>
+      <div class="s">${isBest ? "Cheapest" : `+${$(gap)} vs cheapest`} · ${(t / km * 100).toFixed(0)}¢/km</div>
+      ${bk ? `<div class="s">Breaks even with keeping at ${gasPrice(bk.keep)}, with new gas at ${gasPrice(bk.gas)}</div>` : ""}
+    </div>`;
+  }).join("");
 
   // Breakdown table
   document.getElementById("bdTitle").textContent = `Where the money goes over ${yrs}`;
