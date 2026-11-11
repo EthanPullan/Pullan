@@ -12,7 +12,7 @@
     --app-bg:#e9edf0; --panel:#fff; --panel-2:#f4f6f8;
     --ink:#16241f; --muted:#67756f; --line:#d8dee2; --grid:#e6eaed;
     --board:#1f3d35; --accent:#e0982e; --accent-soft:#fbe6c8;
-    --gas:#c9821f; --ev:#2f6f9f; --ev-soft:#dde9f3; --gas-soft:#fbe6c8;
+    --gas:#c9821f; --ev:#2f6f9f; --keep:#2aa198; --ev-soft:#dde9f3; --gas-soft:#fbe6c8;
     --warn-ink:#8a5a12; --warn-bg:#fdf3e1;
     --shadow:0 1px 2px rgba(20,40,33,.06),0 6px 18px rgba(20,40,33,.06); --radius:12px;
     --sans:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -83,6 +83,7 @@
   .tile{background:var(--panel);padding:13px 14px;}
   .tile .k{font-size:11.5px;color:var(--muted);}
   .tile .v{font-size:18px;font-weight:700;margin-top:3px;}
+  .tile .v.sm{font-size:15px;}
   .tile .s{font-size:11.5px;color:var(--muted);margin-top:2px;}
 
   .chart-panel{padding:16px 18px 12px;}
@@ -90,7 +91,7 @@
   .chart-panel .cap{margin:3px 0 8px;font-size:12px;color:var(--muted);}
   .legend{display:flex;gap:16px;font-size:12.5px;margin-bottom:4px;}
   .legend span{display:inline-flex;align-items:center;gap:6px;}
-  .legend i{width:14px;height:2px;border-radius:2px;display:inline-block;}
+  .legend i{width:16px;height:0;border-top:2px solid;display:inline-block;}
   .chart{position:relative;}
   .chart svg{display:block;width:100%;height:auto;overflow:visible;}
   .chart text{font-family:var(--sans);font-size:11px;fill:var(--muted);}
@@ -148,10 +149,10 @@
 <main class="wrap">
   <section class="hero-intro">
     <h1>Should I switch to an EV?</h1>
-    <p>Compare the full cost of owning a gas car and an electric vehicle in Alberta: purchase, rebate,
-      financing, fuel versus charging, insurance, maintenance, the provincial EV tax and resale value.
-      Every slider starts on a researched Alberta figure (sources at the bottom). Move them to match
-      the two vehicles you're actually choosing between.</p>
+    <p>Compare three choices in Alberta: keep the car you have, buy a new gas car, or buy an EV. It counts the
+      purchase, rebate, financing, fuel versus charging, insurance, maintenance, the provincial EV tax, resale
+      value, and the investment growth you give up on money spent on the car. Most sliders start on a
+      researched Alberta figure (sources at the bottom). Set the "current car" sliders to your own car.</p>
   </section>
 
   <div class="layout">
@@ -165,30 +166,32 @@
           <div class="line" id="vLine"></div>
         </div>
         <div class="tiles">
-          <div class="tile"><div class="k">Pays for itself</div><div class="v num" id="tBreak">…</div><div class="s" id="tBreakS"></div></div>
-          <div class="tile"><div class="k">Running cost saved, year 1</div><div class="v num" id="tRun">…</div><div class="s">fuel, insurance, maintenance, tax</div></div>
-          <div class="tile"><div class="k">Total cost per km</div><div class="v num" id="tKm">…</div><div class="s">gas · EV</div></div>
-          <div class="tile"><div class="k">Break-even gas price</div><div class="v num" id="tGas">…</div><div class="s" id="tGasS">where both cost the same</div></div>
+          <div class="tile"><div class="k">EV vs keeping your car</div><div class="v num" id="tVsKeep">…</div><div class="s" id="tVsKeepS"></div></div>
+          <div class="tile"><div class="k">EV vs a new gas car</div><div class="v num" id="tVsGas">…</div><div class="s" id="tVsGasS"></div></div>
+          <div class="tile"><div class="k">Growth given up by buying the EV</div><div class="v num" id="tGrowth">…</div><div class="s" id="tGrowthS"></div></div>
+          <div class="tile"><div class="k">Cost per km</div><div class="v sm num" id="tKm">…</div><div class="s">keep · gas · EV</div></div>
         </div>
       </section>
 
       <section class="panel chart-panel">
         <h2>Total cost if you sell at the end of each year</h2>
-        <p class="cap">Everything you've paid so far, minus what the car would sell for. Where the lines cross, the EV has paid for itself.</p>
-        <div class="legend"><span><i style="background:var(--gas)"></i>Gas car</span><span><i style="background:var(--ev)"></i>EV</span></div>
+        <p class="cap">Everything you've paid so far plus the investment growth it cost you, minus what the car would sell for. Where lines cross, the cheaper choice changes.</p>
+        <div class="legend"><span><i style="border-color:var(--keep);border-top-style:dashed"></i>Keep your car</span><span><i style="border-color:var(--gas)"></i>New gas car</span><span><i style="border-color:var(--ev)"></i>EV</span></div>
         <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
       </section>
 
       <section class="panel table-panel">
         <h2 id="bdTitle">Where the money goes</h2>
         <table>
-          <thead><tr><th>Cost</th><th>Gas car</th><th>EV</th><th>EV − gas</th></tr></thead>
+          <thead><tr><th>Cost</th><th>Keep</th><th>Gas car</th><th>EV</th></tr></thead>
           <tbody id="bdBody"></tbody>
           <tfoot id="bdFoot"></tfoot>
         </table>
+        <p class="hint" style="margin:8px 0 0">Every option starts from the car you own today. If you keep it, its current value
+          counts as a cost because you could have sold it. If you buy, it's sold to help pay, so that value nets out.</p>
         <details>
           <summary>Year-by-year numbers</summary>
-          <table><thead><tr><th>Sell after</th><th>Gas car</th><th>EV</th><th>EV − gas</th></tr></thead><tbody id="yrBody"></tbody></table>
+          <table><thead><tr><th>Sell after</th><th>Keep</th><th>Gas car</th><th>EV</th></tr></thead><tbody id="yrBody"></tbody></table>
         </details>
       </section>
     </div>
@@ -241,6 +244,24 @@
         effectively costs new.</li>
     </ul>
 
+    <h3>Your current car and the cost of money</h3>
+    <ul>
+      <li>All three options start from the car you own today. If you buy, it's sold or traded in the day you buy.
+        If you keep it, the money you could have had by selling it counts as a cost, and the car keeps losing value
+        and needing more repairs each year. The differences between options come out the same either way. This just
+        keeps the totals readable.</li>
+      <li>The "current car" defaults (value, insurance, repairs) are placeholders, not Alberta data. Set them to your
+        own car and your own insurance bill.</li>
+      <li>Investment growth given up: every dollar that leaves your pocket (down payment, loan payments, fuel,
+        insurance, repairs) is treated as money that would otherwise have earned your expected return, and money
+        coming back (selling your current car, resale at the end) as money that starts earning it. The totals
+        are how much smaller your investments would be at the end. This treats cash buyers and borrowers the same
+        way: a loan cheaper than your expected return comes out ahead of paying cash. Set the return to 0% to
+        ignore it.</li>
+      <li class="muted">5% is a rough long-run figure for a balanced portfolio held in a TFSA, before inflation.
+        If the money would otherwise pay down a mortgage or other debt, use that interest rate instead.</li>
+    </ul>
+
     <h3>Not modelled</h3>
     <ul class="muted">
       <li>Battery replacement. Most EV batteries carry an 8-year / 160,000 km warranty, so it rarely matters within a
@@ -273,6 +294,23 @@ const GROUPS = [
       warn: p => p.evPrice > 50000 && p.rebate > 0 ? "Over $50,000, only EVs built in Canada qualify. Set this to $0 if yours isn't." : "" },
     { id: "charger", label: "Home charger, installed", who: "ev", min: 0, max: 4000, step: 100, def: 1800, fmt: "$",
       hint: "A Level 2 charger and install typically costs $1,200–$2,500. Use $0 if you'll plug into a regular outlet." },
+  ]},
+  { id: "current", title: "Your current car", sub: "if you keep it", open: true, items: [
+    { id: "keepValue", label: "What it would sell for today", who: "keep", min: 0, max: 40000, step: 250, def: 8000, fmt: "$",
+      hint: "Check a trade-in or private-sale estimate. Keeping the car means not having this money." },
+    { id: "keepEff", label: "Its fuel use", who: "keep", min: 4, max: 18, step: 0.1, def: 9.5, fmt: "L/100km",
+      hint: "Look up its combined rating in NRCan's Fuel Consumption Guide. Older cars often use a little more than rated." },
+    { id: "keepIns", label: "Its insurance", who: "keep", min: 500, max: 6000, step: 50, def: 1900, fmt: "$/yr",
+      hint: "Placeholder, so use your actual bill. Older cars are often cheaper to insure, especially without collision cover." },
+    { id: "keepMaint", label: "Its maintenance and repairs, this year", who: "keep", min: 0, max: 6000, step: 50, def: 1500, fmt: "$/yr",
+      hint: "Placeholder. Average what you've spent over the last two or three years." },
+    { id: "keepMaintGrowth", label: "Repair costs increase per year", who: "keep", min: 0, max: 25, step: 1, def: 8, fmt: "%/yr",
+      hint: "Older cars need more repairs as they age. This replaces the general increase for this car." },
+    { id: "keepDep", label: "Value lost per year", who: "keep", min: 0, max: 25, step: 0.5, def: 10, fmt: "%/yr",
+      hint: "Older cars lose value more slowly in dollar terms." },
+    { id: "keepLife", label: "Years it has left", who: "keep", min: 1, max: 20, step: 1, def: 10, fmt: "yr",
+      hint: "Roughly how long before it needs replacing anyway.",
+      warn: p => p.keepLife < p.years ? `Your car may not last the ${p.years} years you're comparing over, so the "keep" total is too low. Try comparing over ${p.keepLife} years instead.` : "" },
   ]},
   { id: "driving", title: "Your driving", sub: "distance, years, efficiency", open: true, items: [
     { id: "km", label: "Distance per year", min: 5000, max: 50000, step: 500, def: 15000, fmt: "km",
@@ -324,13 +362,15 @@ const GROUPS = [
     { id: "depEv", label: "EV value lost per year", who: "ev", min: 5, max: 30, step: 0.5, def: 16, fmt: "%/yr",
       hint: "16% a year leaves about a quarter after 8 years. Used-EV prices are the most uncertain number here." },
   ]},
-  { id: "finance", title: "Financing", sub: "set the rate to 0% if paying cash", open: false, items: [
+  { id: "finance", title: "Financing and investing", sub: "loans and the cost of money", open: true, items: [
+    { id: "invest", label: "Expected investment return", min: 0, max: 12, step: 0.5, def: 5, fmt: "%/yr",
+      hint: "What money not spent on the car would earn. Set to 0% to ignore investment growth." },
     { id: "apr", label: "Loan interest rate", min: 0, max: 15, step: 0.1, def: 6.5, fmt: "%",
-      hint: "Applies to both cars. A higher price means more interest." },
+      hint: "Applies to either new car. Set the down payment to 100% if paying cash." },
     { id: "term", label: "Loan term", min: 12, max: 96, step: 12, def: 72, fmt: "months",
       hint: "If you sell before it's paid off, the remaining balance comes out of the sale." },
     { id: "down", label: "Down payment", min: 0, max: 100, step: 5, def: 20, fmt: "%",
-      hint: "The share of the price paid upfront." },
+      hint: "The share of the price (after rebate) paid upfront, from savings or from selling your current car." },
   ]},
 ];
 const DEFS = Object.fromEntries(GROUPS.flatMap(g => g.items).map(i => [i.id, i]));
@@ -356,7 +396,7 @@ for (const g of GROUPS) {
   for (const it of g.items) {
     state[it.id] = it.def;
     const unit = it.fmt === "$" ? "" : it.fmt;
-    const tag = it.who ? `<span class="tag" style="background:var(--${it.who})" title="${it.who === "ev" ? "EV" : "Gas car"}"></span>` : "";
+    const tag = it.who ? `<span class="tag" style="background:var(--${it.who})" title="${{ ev: "EV", gas: "New gas car", keep: "Your current car" }[it.who]}"></span>` : "";
     const el = document.createElement("div");
     el.className = "ctl";
     el.innerHTML = `
@@ -399,73 +439,92 @@ controlsEl.addEventListener("click", e => {
 });
 
 /* ---------- Model ---------- */
-// Interest paid in each ownership year on an amortising loan.
-function interestByYear(principal, aprPct, termMonths, years) {
-  const out = new Array(years).fill(0);
-  const r = aprPct / 100 / 12;
-  if (principal <= 0 || r <= 0) return out;
-  const pay = principal * r / (1 - Math.pow(1 + r, -termMonths));
-  let bal = principal;
-  for (let m = 0; m < Math.min(termMonths, years * 12); m++) {
-    const i = bal * r;
-    out[Math.floor(m / 12)] += i;
-    bal -= pay - i;
-  }
-  return out;
-}
+const OPTIONS = [
+  { key: "keep", name: "Keep your car", short: "Keep", color: "var(--keep)", dash: "6 4" },
+  { key: "gas", name: "New gas car", short: "Gas", color: "var(--gas)" },
+  { key: "ev", name: "EV", short: "EV", color: "var(--ev)" },
+];
 
-// Returns, for each year 1..years, the net cost if sold at the end of that year,
-// plus a category breakdown at the final year.
+// Month-by-month cash flows for one option. Each month's money out is grown at the
+// investment return to the end, so totals are "how much smaller your investments are".
+// Returns, for each year 1..years, the cost if sold at the end of that year, plus a
+// breakdown at the final year.
 function simulate(p, kind, years) {
-  const ev = kind === "ev";
-  const price = ev ? p.evPrice : p.gasPrice;
+  const keep = kind === "keep", ev = kind === "ev";
+  const price = keep ? 0 : ev ? p.evPrice : p.gasPrice;
   const rebate = ev ? Math.min(p.rebate, price) : 0;
-  const charger = ev ? p.charger : 0;
   const net = price - rebate;
-  const interest = interestByYear(net * (1 - p.down / 100), p.apr, p.term, years);
-  const ins0 = ev ? p.insEv : p.insGas, maint0 = ev ? p.maintEv : p.maintGas;
-  const tax = ev ? p.evTax : 0, dep = (ev ? p.depEv : p.depGas) / 100;
+  const charger = ev ? p.charger : 0;
+  // Keeping your car ties up what it could sell for today, so that counts as its starting cost.
+  // (If you buy, it's sold to help pay, which is the same money, so it nets out.)
+  const kept = keep ? p.keepValue : 0;
+  // Used prices track what the car effectively cost new, so the rebate lowers resale too.
+  const startValue = keep ? p.keepValue : net;
+  const dep = (keep ? p.keepDep : ev ? p.depEv : p.depGas) / 100;
+  const ins0 = keep ? p.keepIns : ev ? p.insEv : p.insGas;
+  const maint0 = keep ? p.keepMaint : ev ? p.maintEv : p.maintGas;
+  const maintEsc = keep ? p.keepMaintGrowth : p.costEsc;
+  const tax = ev ? p.evTax : 0;
 
-  const b = { purchase: net, charger, interest: 0, energy: 0, insurance: 0, maintenance: 0, tax: 0, resale: 0 };
-  const netCost = [], yearOne = {};
-  for (let y = 1; y <= years; y++) {
-    const esc = Math.pow(1 + p.costEsc / 100, y - 1);
-    let energy;
-    if (ev) {
-      const kwh = p.km / 100 * p.evEff * (1 + p.evWinter / 100);
-      const eEsc = Math.pow(1 + p.elecEsc / 100, y - 1);
-      const homeRate = (p.energyRate + p.delivery) / 100 * 1.05;
-      energy = (kwh * p.homePct / 100 * (1 + p.chargeLoss / 100) * homeRate
-              + kwh * (1 - p.homePct / 100) * p.publicPrice) * eEsc;
-    } else {
-      const litres = p.km / 100 * p.gasEff * (1 + p.gasWinter / 100);
-      energy = litres * p.gasCents / 100 * Math.pow(1 + p.gasEsc / 100, y - 1);
+  // Loan
+  let bal = keep ? 0 : net * (1 - p.down / 100);
+  const r = p.apr / 100 / 12, n = p.term;
+  const pay = bal <= 0 ? 0 : r > 0 ? bal * r / (1 - Math.pow(1 + r, -n)) : bal / n;
+
+  const rm = Math.pow(1 + p.invest / 100, 1 / 12) - 1;
+  const upfront = kept + net - bal + charger;
+  let fv = upfront, nominal = upfront;
+  const b = { purchase: net, kept, charger, interest: 0, energy: 0, insurance: 0, maintenance: 0, tax: 0, resale: 0, growth: 0 };
+  const netCost = [];
+  let energyYear = 0, insYear = 0, maintYear = 0;
+
+  for (let m = 1; m <= years * 12; m++) {
+    const y = Math.ceil(m / 12);
+    if (m % 12 === 1) {
+      if (ev) {
+        const kwh = p.km / 100 * p.evEff * (1 + p.evWinter / 100);
+        const homeRate = (p.energyRate + p.delivery) / 100 * 1.05;
+        energyYear = (kwh * p.homePct / 100 * (1 + p.chargeLoss / 100) * homeRate
+                    + kwh * (1 - p.homePct / 100) * p.publicPrice) * Math.pow(1 + p.elecEsc / 100, y - 1);
+      } else {
+        const litres = p.km / 100 * (keep ? p.keepEff : p.gasEff) * (1 + p.gasWinter / 100);
+        energyYear = litres * p.gasCents / 100 * Math.pow(1 + p.gasEsc / 100, y - 1);
+      }
+      insYear = ins0 * Math.pow(1 + p.costEsc / 100, y - 1);
+      maintYear = maint0 * Math.pow(1 + maintEsc / 100, y - 1);
     }
-    b.energy += energy; b.insurance += ins0 * esc; b.maintenance += maint0 * esc; b.tax += tax;
-    b.interest += interest[y - 1];
-    if (y === 1) Object.assign(yearOne, { energy, run: energy + ins0 + maint0 + tax });
-    // Used prices track what the car effectively cost new, so the rebate lowers resale too.
-    const resale = net * Math.pow(1 - dep, y);
-    b.resale = -resale;
-    netCost.push(b.purchase + b.charger + b.interest + b.energy + b.insurance + b.maintenance + b.tax - resale);
+    let cf = (energyYear + insYear + maintYear + tax) / 12;
+    b.energy += energyYear / 12; b.insurance += insYear / 12; b.maintenance += maintYear / 12; b.tax += tax / 12;
+    if (bal > 1e-6) {
+      const i = bal * r, principal = Math.min(pay - i, bal);
+      bal -= principal; b.interest += i; cf += i + principal;
+    }
+    fv = fv * (1 + rm) + cf;
+    nominal += cf;
+    if (m % 12 === 0) {
+      const resale = startValue * Math.pow(1 - dep, y);
+      // Selling repays any loan balance left, and the sale money stops the clock.
+      netCost.push(fv + bal - resale);
+      b.resale = -resale;
+      b.growth = fv - nominal;
+    }
   }
-  return { netCost, breakdown: b, total: netCost[years - 1], yearOne };
+  return { netCost, breakdown: b, total: netCost[years - 1] };
 }
 
 function compute(p) {
-  const H = 20; // horizon for break-even search
-  const gas = simulate(p, "gas", Math.max(H, p.years)), ev = simulate(p, "ev", Math.max(H, p.years));
-  const gasN = simulate(p, "gas", p.years), evN = simulate(p, "ev", p.years);
-  let breakYear = null;
-  // The year from which the EV stays cheaper (lines can cross back when EVs depreciate faster).
-  for (let y = H - 1; y >= 0 && ev.netCost[y] <= gas.netCost[y]; y--) breakYear = y + 1;
-  // Break-even gas price: total gas cost rises with gas price, so bisect.
-  const diffAt = c => simulate({ ...p, gasCents: c }, "gas", p.years).total - evN.total;
-  let breakGas;
-  if (diffAt(0) >= 0) breakGas = 0;
-  else if (diffAt(1000) < 0) breakGas = Infinity;
-  else { let lo = 0, hi = 1000; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; diffAt(m) < 0 ? lo = m : hi = m; } breakGas = (lo + hi) / 2; }
-  return { gas: gasN, ev: evN, breakYear, breakGas };
+  const res = {};
+  for (const o of OPTIONS) res[o.key] = simulate(p, o.key, p.years);
+  // Gas price at which the EV costs the same as another option (that option's cost rises with gas price).
+  const breakGas = other => {
+    const diffAt = c => simulate({ ...p, gasCents: c }, other, p.years).total - res.ev.total;
+    if (diffAt(0) >= 0) return 0;
+    if (diffAt(1000) < 0) return Infinity;
+    let lo = 0, hi = 1000;
+    for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; diffAt(m) < 0 ? lo = m : hi = m; }
+    return (lo + hi) / 2;
+  };
+  return { res, breakKeep: breakGas("keep"), breakGasCar: breakGas("gas") };
 }
 
 /* ---------- Chart ---------- */
@@ -473,14 +532,14 @@ const chartEl = document.getElementById("chart"), tip = document.getElementById(
 const NS = "http://www.w3.org/2000/svg";
 let chartData = null;
 function niceStep(range) {
-  const raw = range / 4, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const raw = range / 5, mag = Math.pow(10, Math.floor(Math.log10(raw)));
   return [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw);
 }
-function drawChart(gas, ev) {
+function drawChart(series) {
   const W = Math.max(300, chartEl.clientWidth), Hh = Math.round(Math.min(300, Math.max(200, W * 0.45)));
-  const m = { t: 14, r: 52, b: 26, l: 52 };
-  const n = gas.length;
-  const all = gas.concat(ev);
+  const m = { t: 14, r: 58, b: 26, l: 52 };
+  const n = series[0].data.length;
+  const all = series.flatMap(s => s.data);
   let lo = Math.min(0, ...all), hi = Math.max(...all);
   const step = niceStep(hi - lo || 1);
   lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
@@ -488,49 +547,47 @@ function drawChart(gas, ev) {
   const y = v => m.t + (hi - v) / (hi - lo) * (Hh - m.t - m.b);
   const kfmt = v => (v < 0 ? "−" : "") + "$" + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000).toFixed(Math.abs(v) % 1000 ? 1 : 0) + "k" : Math.abs(v));
 
-  let s = `<svg xmlns="${NS}" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Line chart of total ownership cost by year for the gas car and the EV">`;
+  let s = `<svg xmlns="${NS}" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Line chart of total cost by year for keeping your car, a new gas car and an EV">`;
   for (let v = lo; v <= hi + 1e-6; v += step)
     s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>
           <text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${kfmt(v)}</text>`;
-  const every = n > 10 ? 2 : 1;
+  const every = n > 10 || W < 420 ? 2 : 1;
   for (let i = 0; i < n; i++) if ((i + 1) % every === 0 || i === 0)
-    s += `<text x="${x(i)}" y="${Hh - 8}" text-anchor="middle">${i === 0 ? "Year 1" : i + 1}</text>`;
+    s += `<text x="${x(i)}" y="${Hh - 8}" text-anchor="middle">${i === 0 ? "Yr 1" : i + 1}</text>`;
   const path = d => d.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1)).join("");
   s += `<line id="xh" y1="${m.t}" y2="${Hh - m.b}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
-  for (const [d, c] of [[gas, "var(--gas)"], [ev, "var(--ev)"]]) {
-    s += `<path d="${path(d)}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-    if (n <= 15) d.forEach((v, i) => s += `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${c}" stroke="var(--panel)" stroke-width="2"/>`);
+  for (const se of series) {
+    s += `<path d="${path(se.data)}" fill="none" stroke="${se.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${se.dash ? ` stroke-dasharray="${se.dash}"` : ""}/>`;
+    if (n <= 15) se.data.forEach((v, i) => s += `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${se.color}" stroke="var(--panel)" stroke-width="2"/>`);
   }
-  // Direct labels at line ends, nudged apart if they collide.
-  let yg = y(gas[n - 1]), ye = y(ev[n - 1]);
-  if (Math.abs(yg - ye) < 14) { const mid = (yg + ye) / 2, up = yg <= ye; yg = mid + (up ? -7 : 7); ye = mid + (up ? 7 : -7); }
-  s += `<text class="lbl" x="${W - m.r + 8}" y="${yg + 4}">Gas</text><text class="lbl" x="${W - m.r + 8}" y="${ye + 4}">EV</text>`;
-  s += `<g id="hdots" visibility="hidden"><circle id="hg" r="5" fill="var(--gas)" stroke="var(--panel)" stroke-width="2"/><circle id="he" r="5" fill="var(--ev)" stroke="var(--panel)" stroke-width="2"/></g>`;
-  s += `<rect x="${m.l}" y="0" width="${W - m.l - m.r}" height="${Hh}" fill="transparent" id="hit"/></svg>`;
+  // Direct labels at the line ends, pushed apart so they never overlap.
+  const labels = series.map(se => ({ t: se.short, y: y(se.data[n - 1]) })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) labels[i].y = Math.max(labels[i].y, labels[i - 1].y + 14);
+  for (const l of labels) s += `<text class="lbl" x="${W - m.r + 8}" y="${l.y + 4}">${l.t}</text>`;
+  s += `<g id="hdots" visibility="hidden">${series.map((se, k) => `<circle id="hd${k}" r="5" fill="${se.color}" stroke="var(--panel)" stroke-width="2"/>`).join("")}</g>`;
+  s += `<rect x="${m.l}" y="0" width="${W - m.l - m.r}" height="${Hh}" fill="transparent"/></svg>`;
   chartEl.querySelector("svg")?.remove();
   chartEl.insertAdjacentHTML("afterbegin", s);
-  chartData = { gas, ev, x, y, n, m, W };
+  chartData = { series, x, y, n, W };
 }
 chartEl.addEventListener("pointermove", e => {
   if (!chartData) return;
   const svg = chartEl.querySelector("svg"), rect = svg.getBoundingClientRect();
   const scale = chartData.W / rect.width, px = (e.clientX - rect.left) * scale;
-  const { gas, ev, x, y, n } = chartData;
+  const { series, x, y, n } = chartData;
   let i = 0, best = Infinity;
   for (let k = 0; k < n; k++) { const d = Math.abs(x(k) - px); if (d < best) { best = d; i = k; } }
   const xh = svg.getElementById("xh");
   xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
   svg.getElementById("hdots").setAttribute("visibility", "visible");
-  svg.getElementById("hg").setAttribute("cx", x(i)); svg.getElementById("hg").setAttribute("cy", y(gas[i]));
-  svg.getElementById("he").setAttribute("cx", x(i)); svg.getElementById("he").setAttribute("cy", y(ev[i]));
-  const d = ev[i] - gas[i];
-  tip.innerHTML = `<b>Sell after ${i + 1} year${i ? "s" : ""}</b>
-    <div class="row"><i style="background:var(--gas)"></i><span>Gas car</span><em>${$(gas[i])}</em></div>
-    <div class="row"><i style="background:var(--ev)"></i><span>EV</span><em>${$(ev[i])}</em></div>
-    <div class="row" style="margin-top:3px;color:var(--muted)"><span>${d <= 0 ? "EV cheaper by" : "Gas cheaper by"}</span><em style="color:var(--ink)">${$(Math.abs(d))}</em></div>`;
+  series.forEach((se, k) => { const c = svg.getElementById("hd" + k); c.setAttribute("cx", x(i)); c.setAttribute("cy", y(se.data[i])); });
+  const rows = series.map(se => ({ se, v: se.data[i] })).sort((a, b) => a.v - b.v);
+  tip.innerHTML = `<b>Sell after ${i + 1} year${i ? "s" : ""}</b>` + rows.map(({ se, v }) =>
+    `<div class="row"><i style="background:${se.color}"></i><span>${se.name}</span><em>${$(v)}</em></div>`).join("") +
+    `<div class="row" style="margin-top:3px;color:var(--muted)"><span>Cheapest: ${rows[0].se.name}</span></div>`;
   tip.style.display = "block";
   const tx = x(i) / scale, tw = tip.offsetWidth;
-  tip.style.left = (tx + 14 + tw > rect.width ? tx - 14 - tw : tx + 14) + "px";
+  tip.style.left = (tx + 14 + tw > rect.width ? Math.max(0, tx - 14 - tw) : tx + 14) + "px";
   tip.style.top = "8px";
 });
 chartEl.addEventListener("pointerleave", () => {
@@ -542,51 +599,59 @@ chartEl.addEventListener("pointerleave", () => {
 
 /* ---------- Render ---------- */
 const ROWS = [
-  ["purchase", "Purchase, after rebate"], ["charger", "Home charger"], ["interest", "Loan interest"],
-  ["energy", "Fuel or electricity"], ["insurance", "Insurance"], ["maintenance", "Maintenance"],
-  ["tax", "Alberta EV tax"], ["resale", "Resale value (you get back)"],
+  ["kept", "Your current car's value today"], ["purchase", "New car, after rebate"], ["charger", "Home charger"],
+  ["interest", "Loan interest"], ["energy", "Fuel or electricity"], ["insurance", "Insurance"],
+  ["maintenance", "Maintenance and repairs"], ["tax", "Alberta EV tax"], ["resale", "Resale value at the end"],
+  ["growth", "Investment growth given up"],
 ];
 const signed = v => (v > 0.5 ? "+" : v < -0.5 ? "−" : "") + $(Math.abs(v));
+const neg = v => (v < -0.5 ? "−" : "") + $(Math.abs(v));
+
+function cmpTile(id, diff) {
+  document.getElementById(id).textContent =
+    Math.abs(diff) < 50 ? "About even" : (diff > 0 ? "EV saves " : "EV costs ") + $(Math.abs(diff)) + (diff > 0 ? "" : " more");
+}
+function gasNote(bg) {
+  if (bg === 0) return "cheaper even if gas were free";
+  if (!isFinite(bg) || bg > 999) return "no realistic gas price closes the gap";
+  return `breaks even at ${bg.toFixed(0)}¢/L gas`;
+}
 
 function update() {
-  const p = state, r = compute(p), N = p.years;
-  const save = r.gas.total - r.ev.total;
+  const p = state, r = compute(p), N = p.years, R = r.res;
   const yrs = `${N} year${N > 1 ? "s" : ""}`;
+  const ranked = OPTIONS.map(o => ({ o, t: R[o.key].total })).sort((a, b) => a.t - b.t);
+  const best = ranked[0], margin = ranked[1].t - best.t;
 
-  document.getElementById("vEyebrow").textContent = `Over ${yrs} and ${(p.km * N).toLocaleString("en-CA")} km`;
-  document.getElementById("vBig").textContent = Math.abs(save) < 50 ? "About the same" :
-    save > 0 ? `EV saves ${$(save)}` : `Gas car saves ${$(-save)}`;
+  document.getElementById("vEyebrow").textContent = `Cheapest over ${yrs} and ${(p.km * N).toLocaleString("en-CA")} km`;
+  document.getElementById("vBig").textContent = margin < 50 ? `${best.o.name} or ${ranked[1].o.name}, about even` : best.o.name;
   document.getElementById("vLine").textContent =
-    `Total cost: gas car ${$(r.gas.total)} vs EV ${$(r.ev.total)}, after selling each at the end. That's ${$(Math.abs(save) / N)} a year.`;
-  document.getElementById("mbarText").textContent = Math.abs(save) < 50 ? `About even over ${yrs}` :
-    save > 0 ? `EV saves ${$(save)} over ${yrs}` : `Gas saves ${$(-save)} over ${yrs}`;
+    (margin >= 50 ? `${$(margin)} cheaper than ${ranked[1].o.name.toLowerCase()}. ` : "") +
+    `Totals: ${OPTIONS.map(o => `${o.name.toLowerCase().replace("ev", "EV")} ${neg(R[o.key].total)}`).join(", ")}.` +
+    (p.keepLife < N ? ` Your current car may not last ${yrs}.` : "");
+  document.getElementById("mbarText").textContent = `Cheapest over ${yrs}: ${best.o.name}`;
 
-  const tb = document.getElementById("tBreak"), tbs = document.getElementById("tBreakS");
-  if (r.breakYear === 1) { tb.textContent = "Year 1"; tbs.textContent = "cheaper from the start"; }
-  else if (r.breakYear && r.breakYear <= N) { tb.textContent = `Year ${r.breakYear}`; tbs.textContent = "within your ownership"; }
-  else if (r.breakYear) { tb.textContent = `Year ${r.breakYear}`; tbs.textContent = `after you'd sell (year ${N})`; }
-  else { tb.textContent = "Not in 20 yrs"; tbs.textContent = "at these settings"; }
-  const runSave = r.gas.yearOne.run - r.ev.yearOne.run;
-  document.getElementById("tRun").textContent = signed(runSave).replace("+", "");
-  document.getElementById("tRun").title = runSave < 0 ? "Negative: the EV costs more to run" : "";
+  cmpTile("tVsKeep", R.keep.total - R.ev.total);
+  document.getElementById("tVsKeepS").textContent = gasNote(r.breakKeep);
+  cmpTile("tVsGas", R.gas.total - R.ev.total);
+  document.getElementById("tVsGasS").textContent = gasNote(r.breakGasCar);
+  const lost = R.ev.breakdown.growth - R.keep.breakdown.growth;
+  document.getElementById("tGrowth").textContent = p.invest > 0 ? $(Math.max(0, lost)) : "Off";
+  document.getElementById("tGrowthS").textContent = p.invest > 0
+    ? `more than keeping your car, at ${p.invest}% a year (already in the totals)` : "investment return is set to 0%";
   const km = p.km * N;
-  document.getElementById("tKm").textContent = `${(r.gas.total / km * 100).toFixed(0)}¢ · ${(r.ev.total / km * 100).toFixed(0)}¢`;
-  const tg = document.getElementById("tGas"), tgs = document.getElementById("tGasS");
-  if (r.breakGas === 0) { tg.textContent = "Any price"; tgs.textContent = "EV wins even with free gas"; }
-  else if (!isFinite(r.breakGas) || r.breakGas > 999) { tg.textContent = "Over $10/L"; tgs.textContent = "gas car wins"; }
-  else { tg.textContent = `${r.breakGas.toFixed(0)}¢/L`; tgs.textContent = r.breakGas < p.gasCents ? "below today's price, so the EV wins" : "above today's price, so gas wins"; }
+  document.getElementById("tKm").textContent = OPTIONS.map(o => `${(R[o.key].total / km * 100).toFixed(0)}¢`).join(" · ");
 
   // Breakdown table
   document.getElementById("bdTitle").textContent = `Where the money goes over ${yrs}`;
-  const gb = r.gas.breakdown, eb = r.ev.breakdown;
   document.getElementById("bdBody").innerHTML = ROWS.map(([k, label]) =>
-    `<tr><td>${label}</td><td class="num">${$(gb[k])}</td><td class="num">${$(eb[k])}</td><td class="num diff">${signed(eb[k] - gb[k])}</td></tr>`).join("");
+    `<tr><td>${label}</td>${OPTIONS.map(o => `<td class="num">${neg(R[o.key].breakdown[k])}</td>`).join("")}</tr>`).join("");
   document.getElementById("bdFoot").innerHTML =
-    `<tr><td>Total cost</td><td class="num">${$(r.gas.total)}</td><td class="num">${$(r.ev.total)}</td><td class="num">${signed(r.ev.total - r.gas.total)}</td></tr>`;
-  document.getElementById("yrBody").innerHTML = r.gas.netCost.map((g, i) =>
-    `<tr><td>${i + 1} yr</td><td class="num">${$(g)}</td><td class="num">${$(r.ev.netCost[i])}</td><td class="num diff">${signed(r.ev.netCost[i] - g)}</td></tr>`).join("");
+    `<tr><td>Total cost</td>${OPTIONS.map(o => `<td class="num">${neg(R[o.key].total)}</td>`).join("")}</tr>`;
+  document.getElementById("yrBody").innerHTML = R.keep.netCost.map((_, i) =>
+    `<tr><td>${i + 1} yr</td>${OPTIONS.map(o => `<td class="num">${neg(R[o.key].netCost[i])}</td>`).join("")}</tr>`).join("");
 
-  drawChart(r.gas.netCost, r.ev.netCost);
+  drawChart(OPTIONS.map(o => ({ ...o, data: R[o.key].netCost })));
 
   // Hints show the default once a value moves; warnings; preset highlight.
   for (const id in DEFS) {
