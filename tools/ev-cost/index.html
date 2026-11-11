@@ -257,6 +257,11 @@
       <li>Insurance: Surex's 2025 analysis of 12 months of quotes put Alberta averages at $2,344/yr for gas cars and
         $3,343/yr for EVs, the widest gap in Canada. These are averages across different vehicles, not like-for-like,
         so a real quote for your two cars is the single most valuable number to plug in here.</li>
+      <li>Premiums falling with value: about half of a typical Alberta premium is collision and comprehensive cover
+        (MyChoice's 2026 median quote: $944 of $1,952), and that's the part that depends on what the car is worth.
+        Repair costs don't fall as a car ages, so the default assumes 40% of each premium falls in step with the
+        car's value, on top of the yearly increase. The insurance figure you enter is for year 1.
+        If you'd drop collision cover on an older car, lower its insurance figure instead.</li>
       <li>Alberta charges a $200 annual tax on battery-electric vehicles at registration, in addition to normal
         registration (plug-in hybrids are exempt). Normal registration costs the same for both, so it's left out.</li>
       <li>Federal Electric Vehicle Affordability Program (from February 2026): up to $5,000 off a new battery-electric
@@ -435,6 +440,8 @@ const GROUPS = [
       hint: "Paid at registration since 2025, on top of normal registration." },
     { id: "costEsc", label: "Insurance and maintenance increase per year", min: 0, max: 10, step: 0.5, def: 3, fmt: "%/yr",
       hint: "Alberta insurance has risen faster than inflation recently." },
+    { id: "insValueShare", label: "Part of your premium tied to the car's value", min: 0, max: 100, step: 5, def: 40, fmt: "%",
+      hint: "Collision and comprehensive cover gets cheaper as a car loses value, but liability doesn't. This share of each car's premium falls in step with its value. Set to 0% to turn it off." },
     { id: "depGas", label: "Gas car value lost per year", who: "gas", min: 5, max: 25, step: 0.5, def: 13, fmt: "%/yr",
       hint: "13% a year leaves about a third of the price after 8 years." },
     { id: "depEv", label: "EV value lost per year", who: "ev", min: 5, max: 30, step: 0.5, def: 16, fmt: "%/yr",
@@ -602,7 +609,9 @@ function simulate(p, kind, years) {
         const litres = p.km / 100 * (keep ? p.keepEff : p.gasEff) * (1 + p.gasWinter / 100);
         energyYear = litres * p.gasCents / 100 * Math.pow(1 + p.gasEsc / 100, y - 1);
       }
-      insYear = ins0 * Math.pow(1 + p.costEsc / 100, y - 1);
+      // The value-linked share of the premium (collision/comprehensive) shrinks with the car's value.
+      const share = p.insValueShare / 100;
+      insYear = ins0 * Math.pow(1 + p.costEsc / 100, y - 1) * ((1 - share) + share * Math.pow(1 - dep, y - 1));
       maintYear = maint0 * Math.pow(1 + maintEsc / 100, y - 1);
       battYear = y > warrantyLeft ? p.uevBatt : 0;
     }
