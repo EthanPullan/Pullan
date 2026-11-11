@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Compare the full cost of owning a gas car and an electric vehicle in Alberta, with sliders for every assumption.">
+<meta name="theme-color" content="#1f3d35">
+<title>EV Switch Calculator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23e0982e'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --app-bg:#e9edf0; --panel:#fff; --panel-2:#f4f6f8;
+    --ink:#16241f; --muted:#67756f; --line:#d8dee2; --grid:#e6eaed;
+    --board:#1f3d35; --accent:#e0982e; --accent-soft:#fbe6c8;
+    --gas:#c9821f; --ev:#2f6f9f; --ev-soft:#dde9f3; --gas-soft:#fbe6c8;
+    --warn-ink:#8a5a12; --warn-bg:#fdf3e1;
+    --shadow:0 1px 2px rgba(20,40,33,.06),0 6px 18px rgba(20,40,33,.06); --radius:12px;
+    --sans:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono:ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--app-bg);
+    -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.45;}
+  a{color:inherit;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+  .num{font-variant-numeric:tabular-nums;}
+
+  .toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:11px 20px;
+    background:var(--panel);border-bottom:1px solid var(--line);}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.14em;
+    text-transform:uppercase;font-size:13px;text-decoration:none;}
+  .brand .mark{width:16px;height:16px;border-radius:4px;background:var(--accent);flex:none;}
+  .brand small{font-weight:500;letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:11px;}
+  .spacer{flex:1;}
+  .btn{font:inherit;font-size:12.5px;font-weight:600;color:var(--board);background:var(--panel-2);
+    border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer;}
+  .btn:hover{border-color:var(--accent);}
+
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 20px 60px;}
+  .hero-intro h1{margin:0 0 6px;font-size:24px;letter-spacing:-.01em;}
+  .hero-intro p{margin:0 0 22px;max-width:75ch;color:var(--muted);font-size:14px;line-height:1.6;}
+
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;align-items:start;}
+  .results{position:sticky;top:16px;display:flex;flex-direction:column;gap:16px;}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+  details.group{margin-bottom:14px;}
+  details.group > summary{list-style:none;cursor:pointer;padding:14px 18px;font-weight:700;font-size:14.5px;
+    display:flex;align-items:center;gap:10px;}
+  details.group > summary::-webkit-details-marker{display:none;}
+  details.group > summary::after{content:"▾";margin-left:auto;color:var(--muted);transition:transform .12s;}
+  details.group:not([open]) > summary::after{transform:rotate(-90deg);}
+  details.group > summary .sub{font-weight:500;color:var(--muted);font-size:12.5px;}
+  .group-body{padding:0 18px 8px;}
+
+  .ctl{padding:12px 0;border-top:1px solid var(--grid);}
+  .ctl-head{display:flex;align-items:baseline;gap:10px;}
+  .ctl-head label{font-weight:600;font-size:13.5px;flex:1;}
+  .ctl-head .tag{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px;}
+  .valbox{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:13px;}
+  .valbox input{width:86px;text-align:right;font:inherit;padding:3px 6px;border:1px solid var(--line);
+    border-radius:6px;background:var(--panel-2);color:var(--ink);}
+  .valbox .unit{color:var(--muted);font-size:12px;min-width:2ch;}
+  input[type=range]{width:100%;margin:8px 0 2px;accent-color:var(--board);}
+  .hint{font-size:12px;color:var(--muted);line-height:1.5;}
+  .hint.changed::before{content:"Default: " attr(data-default) " · ";color:var(--ink);}
+  .presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .presets button{font:inherit;font-size:11.5px;padding:3px 9px;border-radius:20px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink);cursor:pointer;}
+  .presets button:hover{border-color:var(--accent);}
+  .presets button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);}
+  .warn{display:none;margin-top:6px;font-size:12px;color:var(--warn-ink);background:var(--warn-bg);
+    border-radius:6px;padding:6px 9px;}
+  .warn.show{display:block;}
+
+  /* results */
+  .verdict{padding:20px 22px;}
+  .verdict .eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);}
+  .verdict .big{font-size:34px;font-weight:750;letter-spacing:-.02em;margin:4px 0 2px;}
+  .verdict .line{color:var(--muted);font-size:13.5px;}
+  .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);
+    border-top:1px solid var(--line);border-radius:0 0 var(--radius) var(--radius);overflow:hidden;}
+  .tile{background:var(--panel);padding:13px 14px;}
+  .tile .k{font-size:11.5px;color:var(--muted);}
+  .tile .v{font-size:18px;font-weight:700;margin-top:3px;}
+  .tile .s{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+  .chart-panel{padding:16px 18px 12px;}
+  .chart-panel h2,.table-panel h2{margin:0;font-size:14.5px;}
+  .chart-panel .cap{margin:3px 0 8px;font-size:12px;color:var(--muted);}
+  .legend{display:flex;gap:16px;font-size:12.5px;margin-bottom:4px;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend i{width:14px;height:2px;border-radius:2px;display:inline-block;}
+  .chart{position:relative;}
+  .chart svg{display:block;width:100%;height:auto;overflow:visible;}
+  .chart text{font-family:var(--sans);font-size:11px;fill:var(--muted);}
+  .chart .lbl{font-size:11.5px;font-weight:600;fill:var(--ink);}
+  .tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    box-shadow:var(--shadow);padding:8px 10px;font-size:12px;white-space:nowrap;display:none;z-index:2;}
+  .tip b{display:block;margin-bottom:3px;}
+  .tip .row{display:flex;align-items:center;gap:6px;}
+  .tip .row i{width:8px;height:8px;border-radius:50%;}
+  .tip .row span{flex:1;} .tip .row em{font-style:normal;font-weight:600;margin-left:12px;}
+
+  .table-panel{padding:16px 18px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+  th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--grid);}
+  th:first-child,td:first-child{text-align:left;}
+  thead th{font-size:11.5px;color:var(--muted);font-weight:600;}
+  tbody tr:last-child td{border-bottom:none;}
+  tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:none;}
+  td.diff{color:var(--muted);}
+  .table-panel details{margin-top:10px;font-size:12.5px;}
+  .table-panel summary{cursor:pointer;color:var(--board);font-weight:600;}
+
+  .notes{margin-top:26px;padding:18px 22px;font-size:13px;line-height:1.6;}
+  .notes h2{margin:0 0 8px;font-size:15px;}
+  .notes h3{margin:16px 0 4px;font-size:13.5px;}
+  .notes ul{margin:4px 0;padding-left:20px;}
+  .notes li{margin:3px 0;}
+  .notes .muted{color:var(--muted);}
+
+  .mbar{display:none;}
+  @media (max-width:900px){
+    .layout{grid-template-columns:minmax(0,1fr);}
+    .results{position:static;}
+    .mbar{display:flex;position:sticky;top:0;z-index:5;gap:10px;align-items:center;justify-content:space-between;
+      background:var(--board);color:#eaf2ef;padding:9px 16px;font-size:13px;font-weight:600;}
+    .mbar a{color:#fbe6c8;font-weight:600;font-size:12px;}
+  }
+  @media (max-width:620px){
+    .wrap{padding:18px 16px 48px;}
+    .tiles{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .verdict .big{font-size:28px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="toolbar">
+  <a class="brand" href="../../"><span class="mark"></span>Pullan <small>projects</small></a>
+  <div class="spacer"></div>
+  <button class="btn" id="copyLink" type="button">Copy link to these settings</button>
+  <button class="btn" id="resetAll" type="button">Reset to Alberta defaults</button>
+</header>
+<div class="mbar" id="mbar"><span id="mbarText">…</span><a href="#results">See results ↓</a></div>
+
+<main class="wrap">
+  <section class="hero-intro">
+    <h1>Should I switch to an EV?</h1>
+    <p>Compare the full cost of owning a gas car and an electric vehicle in Alberta: purchase, rebate,
+      financing, fuel versus charging, insurance, maintenance, the provincial EV tax and resale value.
+      Every slider starts on a researched Alberta figure (sources at the bottom). Move them to match
+      the two vehicles you're actually choosing between.</p>
+  </section>
+
+  <div class="layout">
+    <div id="controls"></div>
+
+    <div class="results" id="results">
+      <section class="panel">
+        <div class="verdict">
+          <div class="eyebrow" id="vEyebrow">Over 8 years</div>
+          <div class="big num" id="vBig">…</div>
+          <div class="line" id="vLine"></div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><div class="k">Pays for itself</div><div class="v num" id="tBreak">…</div><div class="s" id="tBreakS"></div></div>
+          <div class="tile"><div class="k">Running cost saved, year 1</div><div class="v num" id="tRun">…</div><div class="s">fuel, insurance, maintenance, tax</div></div>
+          <div class="tile"><div class="k">Total cost per km</div><div class="v num" id="tKm">…</div><div class="s">gas · EV</div></div>
+          <div class="tile"><div class="k">Break-even gas price</div><div class="v num" id="tGas">…</div><div class="s" id="tGasS">where both cost the same</div></div>
+        </div>
+      </section>
+
+      <section class="panel chart-panel">
+        <h2>Total cost if you sell at the end of each year</h2>
+        <p class="cap">Everything you've paid so far, minus what the car would sell for. Where the lines cross, the EV has paid for itself.</p>
+        <div class="legend"><span><i style="background:var(--gas)"></i>Gas car</span><span><i style="background:var(--ev)"></i>EV</span></div>
+        <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
+      </section>
+
+      <section class="panel table-panel">
+        <h2 id="bdTitle">Where the money goes</h2>
+        <table>
+          <thead><tr><th>Cost</th><th>Gas car</th><th>EV</th><th>EV − gas</th></tr></thead>
+          <tbody id="bdBody"></tbody>
+          <tfoot id="bdFoot"></tfoot>
+        </table>
+        <details>
+          <summary>Year-by-year numbers</summary>
+          <table><thead><tr><th>Sell after</th><th>Gas car</th><th>EV</th><th>EV − gas</th></tr></thead><tbody id="yrBody"></tbody></table>
+        </details>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel notes">
+    <h2>Where the defaults come from, and what they leave out</h2>
+
+    <h3>Gas price</h3>
+    <ul>
+      <li>Statistics Canada Table 18-10-0001-01, monthly regular self-serve price, average of Calgary and Edmonton
+        (data to September 2026). Annual averages: 2021 126¢, 2022 155¢, 2023 136¢, 2024 145¢, 2025 132¢.
+        The default is the 5-year average (Oct 2021 – Sep 2026), 143.4¢/L.</li>
+      <li class="muted">Caveat: April 2021 – March 2025 prices include the federal consumer carbon levy
+        (up to 17.6¢/L), which has since been removed, while 2022–23 prices were lowered by Alberta's fuel-tax
+        relief. Historical averages are a starting point, not a forecast. 2026 has run well above them.</li>
+    </ul>
+
+    <h3>Electricity</h3>
+    <ul>
+      <li>Energy charge: Alberta's Rate of Last Resort is fixed at about 12.0¢/kWh for 2025–2026 (EPCOR, ENMAX,
+        ATCO and FortisAlberta territories, via the Utilities Consumer Advocate). Before 2025 the old Regulated
+        Rate swung widely, from about 10¢ to over 30¢ in 2022–23. Fixed-rate retailer contracts can be lower.</li>
+      <li>Delivery and fees: ENMAX's 2026 per-kWh transmission and distribution (about 5.45¢) plus Calgary's local
+        access fee (about 1.55¢). Rural FortisAlberta customers and other cities differ, so check a recent bill.
+        Only per-kWh charges are counted, since the daily fixed fees don't change when you add an EV. GST (5%) is added.</li>
+      <li>Charging losses (about 10%) and the cold-weather allowance are applied on top of the car's rated efficiency.</li>
+    </ul>
+
+    <h3>Insurance, tax and rebate</h3>
+    <ul>
+      <li>Insurance: Surex's 2025 analysis of 12 months of quotes put Alberta averages at $2,344/yr for gas cars and
+        $3,343/yr for EVs, the widest gap in Canada. These are averages across different vehicles, not like-for-like,
+        so a real quote for your two cars is the single most valuable number to plug in here.</li>
+      <li>Alberta charges a $200 annual tax on battery-electric vehicles at registration, in addition to normal
+        registration (plug-in hybrids are exempt). Normal registration costs the same for both, so it's left out.</li>
+      <li>Federal Electric Vehicle Affordability Program (from February 2026): up to $5,000 off a new battery-electric
+        vehicle at the dealer, with a $50,000 transaction cap unless the car is built in Canada, eligible countries of
+        manufacture only, and one rebate per person. The amounts are scheduled to decline in later years, so confirm
+        the current figure with the dealer.</li>
+    </ul>
+
+    <h3>Maintenance and resale</h3>
+    <ul>
+      <li>CAA estimates EV owners save 40–50% on maintenance (no oil changes, less brake wear). Defaults of $1,000
+        versus $550 a year reflect that. EVs can wear tires faster, which this range already allows for.</li>
+      <li>Depreciation rates are estimates: roughly a third of the price remains after 8 years for a gas car and a
+        quarter for an EV. Used-EV prices fell sharply in 2023–24, which makes this the most uncertain default here.</li>
+      <li>Resale value is worked out from the price after the rebate, on the basis that used prices follow what a car
+        effectively costs new.</li>
+    </ul>
+
+    <h3>Not modelled</h3>
+    <ul class="muted">
+      <li>Battery replacement. Most EV batteries carry an 8-year / 160,000 km warranty, so it rarely matters within a
+        typical ownership period.</li>
+      <li>Plug-in hybrids, time-of-use electricity plans, free workplace charging, the value of your time at
+        fast chargers, and emissions.</li>
+      <li>Winter tires, parking and normal registration, which cost about the same for both.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+/* ---------- Gas price history (StatCan 18-10-0001-01, mean of Calgary & Edmonton, ¢/L) ---------- */
+const GAS_PRESETS = [
+  { label: "5-yr avg", value: 143.4 },
+  { label: "10-yr avg", value: 124.6 },
+  { label: "2025 avg", value: 131.9 },
+  { label: "Sep 2026", value: 164.9 },
+];
+
+/* ---------- Slider definitions ---------- */
+const GROUPS = [
+  { id: "vehicles", title: "The two vehicles", sub: "price, rebate, charger", open: true, items: [
+    { id: "gasPrice", label: "Gas car price", who: "gas", min: 15000, max: 100000, step: 500, def: 38000, fmt: "$",
+      hint: "Out-the-door price, including GST." },
+    { id: "evPrice", label: "EV price", who: "ev", min: 20000, max: 120000, step: 500, def: 48000, fmt: "$",
+      hint: "Out-the-door price, before the rebate." },
+    { id: "rebate", label: "Federal EV rebate", who: "ev", min: 0, max: 5000, step: 250, def: 5000, fmt: "$",
+      hint: "Electric Vehicle Affordability Program: up to $5,000 at the dealer, new cars only, one per person.",
+      warn: p => p.evPrice > 50000 && p.rebate > 0 ? "Over $50,000, only EVs built in Canada qualify. Set this to $0 if yours isn't." : "" },
+    { id: "charger", label: "Home charger, installed", who: "ev", min: 0, max: 4000, step: 100, def: 1800, fmt: "$",
+      hint: "A Level 2 charger and install typically costs $1,200–$2,500. Use $0 if you'll plug into a regular outlet." },
+  ]},
+  { id: "driving", title: "Your driving", sub: "distance, years, efficiency", open: true, items: [
+    { id: "km", label: "Distance per year", min: 5000, max: 50000, step: 500, def: 15000, fmt: "km",
+      hint: "Canadians drive about 15,000 km a year on average." },
+    { id: "years", label: "Years you'll keep it", min: 1, max: 15, step: 1, def: 8, fmt: "yr",
+      hint: "The longer you keep it, the more the lower running costs add up." },
+    { id: "gasEff", label: "Gas car fuel use", who: "gas", min: 4, max: 16, step: 0.1, def: 8.5, fmt: "L/100km",
+      hint: "Use the combined rating from NRCan's Fuel Consumption Guide. A compact SUV is about 8–9." },
+    { id: "evEff", label: "EV energy use", who: "ev", min: 12, max: 30, step: 0.5, def: 19, fmt: "kWh/100km",
+      hint: "Use the combined rating. A compact EV SUV is about 17–20." },
+    { id: "evWinter", label: "EV cold-weather penalty", who: "ev", min: 0, max: 40, step: 1, def: 15, fmt: "%",
+      hint: "Extra energy averaged over the whole year. On –20 °C days it can be 30–40%, but summer has none." },
+    { id: "gasWinter", label: "Gas car cold-weather penalty", who: "gas", min: 0, max: 20, step: 1, def: 5, fmt: "%",
+      hint: "Gas cars also use more fuel in winter (warm-up, idling), though less than EVs." },
+  ]},
+  { id: "energy", title: "Fuel and charging", sub: "gas, electricity, public charging", open: true, items: [
+    { id: "gasCents", label: "Gas price today", who: "gas", min: 80, max: 220, step: 0.5, def: 143.4, fmt: "¢/L", presets: GAS_PRESETS,
+      hint: "Regular self-serve, Calgary and Edmonton average (StatCan)." },
+    { id: "gasEsc", label: "Gas price change per year", who: "gas", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
+      hint: "2% roughly tracks inflation." },
+    { id: "energyRate", label: "Electricity energy charge", who: "ev", min: 4, max: 35, step: 0.1, def: 12.0, fmt: "¢/kWh",
+      hint: "Rate of Last Resort is about 12.0¢ for 2025–26. Use your contract rate if you've signed one." },
+    { id: "delivery", label: "Electricity delivery and fees", who: "ev", min: 0, max: 15, step: 0.1, def: 7.0, fmt: "¢/kWh",
+      hint: "Per-kWh transmission, distribution and local access fees (Calgary is about 7¢). GST is added for you." },
+    { id: "elecEsc", label: "Electricity price change per year", who: "ev", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
+      hint: "Also applied to the public charging price." },
+    { id: "homePct", label: "Charging done at home", who: "ev", min: 0, max: 100, step: 5, def: 85, fmt: "%",
+      hint: "The rest is at public fast chargers, mostly on road trips." },
+    { id: "publicPrice", label: "Public fast-charging price", who: "ev", min: 0.2, max: 1.0, step: 0.01, def: 0.50, fmt: "$/kWh",
+      hint: "Alberta fast chargers mostly cost $0.40–$0.60/kWh-equivalent, and some charge by the minute." },
+    { id: "chargeLoss", label: "Home charging losses", who: "ev", min: 0, max: 25, step: 1, def: 10, fmt: "%",
+      hint: "Energy lost between the meter and the battery. Level 2 is typically 8–12%." },
+  ]},
+  { id: "ownership", title: "Insurance, maintenance and resale", sub: "", open: false, items: [
+    { id: "insGas", label: "Gas car insurance", who: "gas", min: 800, max: 6000, step: 50, def: 2344, fmt: "$/yr",
+      hint: "Alberta average gas-car quote, 2025 (Surex). A real quote is far better." },
+    { id: "insEv", label: "EV insurance", who: "ev", min: 800, max: 7000, step: 50, def: 3343, fmt: "$/yr",
+      hint: "Alberta average EV quote, 2025 (Surex): 43% above gas, the widest gap in Canada." },
+    { id: "maintGas", label: "Gas car maintenance", who: "gas", min: 0, max: 3000, step: 50, def: 1000, fmt: "$/yr",
+      hint: "Oil changes, brakes, filters, tires, belts and fluids." },
+    { id: "maintEv", label: "EV maintenance", who: "ev", min: 0, max: 3000, step: 50, def: 550, fmt: "$/yr",
+      hint: "CAA estimates EV maintenance runs 40–50% lower." },
+    { id: "evTax", label: "Alberta EV tax", who: "ev", min: 0, max: 500, step: 10, def: 200, fmt: "$/yr",
+      hint: "Paid at registration since 2025, on top of normal registration." },
+    { id: "costEsc", label: "Insurance and maintenance increase per year", min: 0, max: 10, step: 0.5, def: 3, fmt: "%/yr",
+      hint: "Alberta insurance has risen faster than inflation recently." },
+    { id: "depGas", label: "Gas car value lost per year", who: "gas", min: 5, max: 25, step: 0.5, def: 13, fmt: "%/yr",
+      hint: "13% a year leaves about a third of the price after 8 years." },
+    { id: "depEv", label: "EV value lost per year", who: "ev", min: 5, max: 30, step: 0.5, def: 16, fmt: "%/yr",
+      hint: "16% a year leaves about a quarter after 8 years. Used-EV prices are the most uncertain number here." },
+  ]},
+  { id: "finance", title: "Financing", sub: "set the rate to 0% if paying cash", open: false, items: [
+    { id: "apr", label: "Loan interest rate", min: 0, max: 15, step: 0.1, def: 6.5, fmt: "%",
+      hint: "Applies to both cars. A higher price means more interest." },
+    { id: "term", label: "Loan term", min: 12, max: 96, step: 12, def: 72, fmt: "months",
+      hint: "If you sell before it's paid off, the remaining balance comes out of the sale." },
+    { id: "down", label: "Down payment", min: 0, max: 100, step: 5, def: 20, fmt: "%",
+      hint: "The share of the price paid upfront." },
+  ]},
+];
+const DEFS = Object.fromEntries(GROUPS.flatMap(g => g.items).map(i => [i.id, i]));
+
+/* ---------- Formatting ---------- */
+const money0 = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
+const $ = n => money0.format(Math.round(n)).replace("CA", "");
+const dec = n => (n % 1 === 0 ? 0 : (String(n).split(".")[1] || "").length);
+function fmtVal(def, v) {
+  if (def.fmt === "$") return $(v);
+  if (def.fmt === "$/kWh") return "$" + v.toFixed(2) + "/kWh";
+  return v.toLocaleString("en-CA", { minimumFractionDigits: dec(def.step), maximumFractionDigits: dec(def.step) }) + " " + def.fmt;
+}
+
+/* ---------- Build controls ---------- */
+const state = {};
+const controlsEl = document.getElementById("controls");
+for (const g of GROUPS) {
+  const d = document.createElement("details");
+  d.className = "panel group"; d.open = g.open;
+  d.innerHTML = `<summary>${g.title}${g.sub ? ` <span class="sub">${g.sub}</span>` : ""}</summary><div class="group-body"></div>`;
+  const body = d.querySelector(".group-body");
+  for (const it of g.items) {
+    state[it.id] = it.def;
+    const unit = it.fmt === "$" ? "" : it.fmt;
+    const tag = it.who ? `<span class="tag" style="background:var(--${it.who})" title="${it.who === "ev" ? "EV" : "Gas car"}"></span>` : "";
+    const el = document.createElement("div");
+    el.className = "ctl";
+    el.innerHTML = `
+      <div class="ctl-head">
+        <label for="r_${it.id}">${tag}${it.label}</label>
+        <span class="valbox">${it.fmt === "$" ? '<span class="unit">$</span>' : ""}
+          <input type="number" id="n_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}" aria-label="${it.label}">
+          ${unit ? `<span class="unit">${unit}</span>` : ""}</span>
+      </div>
+      <input type="range" id="r_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}">
+      <div class="hint" id="h_${it.id}" data-default="${fmtVal(it, it.def)}">${it.hint}</div>
+      ${it.presets ? `<div class="presets">${it.presets.map(p =>
+        `<button type="button" data-for="${it.id}" data-v="${p.value}">${p.label} · ${p.value}¢</button>`).join("")}</div>` : ""}
+      ${it.warn ? `<div class="warn" id="w_${it.id}"></div>` : ""}`;
+    body.appendChild(el);
+  }
+  controlsEl.appendChild(d);
+}
+
+function setValue(id, v, from) {
+  const def = DEFS[id];
+  if (!isFinite(v)) return;
+  // The range clamps; the number box allows going past the slider's ends.
+  v = Math.max(from === "num" ? Math.min(def.min, 0) : def.min, from === "num" ? v : Math.min(def.max, v));
+  state[id] = v;
+  if (from !== "range") document.getElementById("r_" + id).value = v;
+  if (from !== "num") document.getElementById("n_" + id).value = v;
+}
+controlsEl.addEventListener("input", e => {
+  const t = e.target, m = t.id.match(/^([rn])_(.+)$/);
+  if (!m) return;
+  setValue(m[2], parseFloat(t.value), m[1] === "r" ? "range" : "num");
+  update();
+});
+controlsEl.addEventListener("click", e => {
+  const b = e.target.closest(".presets button");
+  if (!b) return;
+  setValue(b.dataset.for, parseFloat(b.dataset.v));
+  update();
+});
+
+/* ---------- Model ---------- */
+// Interest paid in each ownership year on an amortising loan.
+function interestByYear(principal, aprPct, termMonths, years) {
+  const out = new Array(years).fill(0);
+  const r = aprPct / 100 / 12;
+  if (principal <= 0 || r <= 0) return out;
+  const pay = principal * r / (1 - Math.pow(1 + r, -termMonths));
+  let bal = principal;
+  for (let m = 0; m < Math.min(termMonths, years * 12); m++) {
+    const i = bal * r;
+    out[Math.floor(m / 12)] += i;
+    bal -= pay - i;
+  }
+  return out;
+}
+
+// Returns, for each year 1..years, the net cost if sold at the end of that year,
+// plus a category breakdown at the final year.
+function simulate(p, kind, years) {
+  const ev = kind === "ev";
+  const price = ev ? p.evPrice : p.gasPrice;
+  const rebate = ev ? Math.min(p.rebate, price) : 0;
+  const charger = ev ? p.charger : 0;
+  const net = price - rebate;
+  const interest = interestByYear(net * (1 - p.down / 100), p.apr, p.term, years);
+  const ins0 = ev ? p.insEv : p.insGas, maint0 = ev ? p.maintEv : p.maintGas;
+  const tax = ev ? p.evTax : 0, dep = (ev ? p.depEv : p.depGas) / 100;
+
+  const b = { purchase: net, charger, interest: 0, energy: 0, insurance: 0, maintenance: 0, tax: 0, resale: 0 };
+  const netCost = [], yearOne = {};
+  for (let y = 1; y <= years; y++) {
+    const esc = Math.pow(1 + p.costEsc / 100, y - 1);
+    let energy;
+    if (ev) {
+      const kwh = p.km / 100 * p.evEff * (1 + p.evWinter / 100);
+      const eEsc = Math.pow(1 + p.elecEsc / 100, y - 1);
+      const homeRate = (p.energyRate + p.delivery) / 100 * 1.05;
+      energy = (kwh * p.homePct / 100 * (1 + p.chargeLoss / 100) * homeRate
+              + kwh * (1 - p.homePct / 100) * p.publicPrice) * eEsc;
+    } else {
+      const litres = p.km / 100 * p.gasEff * (1 + p.gasWinter / 100);
+      energy = litres * p.gasCents / 100 * Math.pow(1 + p.gasEsc / 100, y - 1);
+    }
+    b.energy += energy; b.insurance += ins0 * esc; b.maintenance += maint0 * esc; b.tax += tax;
+    b.interest += interest[y - 1];
+    if (y === 1) Object.assign(yearOne, { energy, run: energy + ins0 + maint0 + tax });
+    // Used prices track what the car effectively cost new, so the rebate lowers resale too.
+    const resale = net * Math.pow(1 - dep, y);
+    b.resale = -resale;
+    netCost.push(b.purchase + b.charger + b.interest + b.energy + b.insurance + b.maintenance + b.tax - resale);
+  }
+  return { netCost, breakdown: b, total: netCost[years - 1], yearOne };
+}
+
+function compute(p) {
+  const H = 20; // horizon for break-even search
+  const gas = simulate(p, "gas", Math.max(H, p.years)), ev = simulate(p, "ev", Math.max(H, p.years));
+  const gasN = simulate(p, "gas", p.years), evN = simulate(p, "ev", p.years);
+  let breakYear = null;
+  // The year from which the EV stays cheaper (lines can cross back when EVs depreciate faster).
+  for (let y = H - 1; y >= 0 && ev.netCost[y] <= gas.netCost[y]; y--) breakYear = y + 1;
+  // Break-even gas price: total gas cost rises with gas price, so bisect.
+  const diffAt = c => simulate({ ...p, gasCents: c }, "gas", p.years).total - evN.total;
+  let breakGas;
+  if (diffAt(0) >= 0) breakGas = 0;
+  else if (diffAt(1000) < 0) breakGas = Infinity;
+  else { let lo = 0, hi = 1000; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; diffAt(m) < 0 ? lo = m : hi = m; } breakGas = (lo + hi) / 2; }
+  return { gas: gasN, ev: evN, breakYear, breakGas };
+}
+
+/* ---------- Chart ---------- */
+const chartEl = document.getElementById("chart"), tip = document.getElementById("tip");
+const NS = "http://www.w3.org/2000/svg";
+let chartData = null;
+function niceStep(range) {
+  const raw = range / 4, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  return [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw);
+}
+function drawChart(gas, ev) {
+  const W = Math.max(300, chartEl.clientWidth), Hh = Math.round(Math.min(300, Math.max(200, W * 0.45)));
+  const m = { t: 14, r: 52, b: 26, l: 52 };
+  const n = gas.length;
+  const all = gas.concat(ev);
+  let lo = Math.min(0, ...all), hi = Math.max(...all);
+  const step = niceStep(hi - lo || 1);
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const x = i => m.l + (n === 1 ? (W - m.l - m.r) / 2 : i * (W - m.l - m.r) / (n - 1));
+  const y = v => m.t + (hi - v) / (hi - lo) * (Hh - m.t - m.b);
+  const kfmt = v => (v < 0 ? "−" : "") + "$" + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000).toFixed(Math.abs(v) % 1000 ? 1 : 0) + "k" : Math.abs(v));
+
+  let s = `<svg xmlns="${NS}" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Line chart of total ownership cost by year for the gas car and the EV">`;
+  for (let v = lo; v <= hi + 1e-6; v += step)
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>
+          <text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${kfmt(v)}</text>`;
+  const every = n > 10 ? 2 : 1;
+  for (let i = 0; i < n; i++) if ((i + 1) % every === 0 || i === 0)
+    s += `<text x="${x(i)}" y="${Hh - 8}" text-anchor="middle">${i === 0 ? "Year 1" : i + 1}</text>`;
+  const path = d => d.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1)).join("");
+  s += `<line id="xh" y1="${m.t}" y2="${Hh - m.b}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
+  for (const [d, c] of [[gas, "var(--gas)"], [ev, "var(--ev)"]]) {
+    s += `<path d="${path(d)}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    if (n <= 15) d.forEach((v, i) => s += `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${c}" stroke="var(--panel)" stroke-width="2"/>`);
+  }
+  // Direct labels at line ends, nudged apart if they collide.
+  let yg = y(gas[n - 1]), ye = y(ev[n - 1]);
+  if (Math.abs(yg - ye) < 14) { const mid = (yg + ye) / 2, up = yg <= ye; yg = mid + (up ? -7 : 7); ye = mid + (up ? 7 : -7); }
+  s += `<text class="lbl" x="${W - m.r + 8}" y="${yg + 4}">Gas</text><text class="lbl" x="${W - m.r + 8}" y="${ye + 4}">EV</text>`;
+  s += `<g id="hdots" visibility="hidden"><circle id="hg" r="5" fill="var(--gas)" stroke="var(--panel)" stroke-width="2"/><circle id="he" r="5" fill="var(--ev)" stroke="var(--panel)" stroke-width="2"/></g>`;
+  s += `<rect x="${m.l}" y="0" width="${W - m.l - m.r}" height="${Hh}" fill="transparent" id="hit"/></svg>`;
+  chartEl.querySelector("svg")?.remove();
+  chartEl.insertAdjacentHTML("afterbegin", s);
+  chartData = { gas, ev, x, y, n, m, W };
+}
+chartEl.addEventListener("pointermove", e => {
+  if (!chartData) return;
+  const svg = chartEl.querySelector("svg"), rect = svg.getBoundingClientRect();
+  const scale = chartData.W / rect.width, px = (e.clientX - rect.left) * scale;
+  const { gas, ev, x, y, n } = chartData;
+  let i = 0, best = Infinity;
+  for (let k = 0; k < n; k++) { const d = Math.abs(x(k) - px); if (d < best) { best = d; i = k; } }
+  const xh = svg.getElementById("xh");
+  xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
+  svg.getElementById("hdots").setAttribute("visibility", "visible");
+  svg.getElementById("hg").setAttribute("cx", x(i)); svg.getElementById("hg").setAttribute("cy", y(gas[i]));
+  svg.getElementById("he").setAttribute("cx", x(i)); svg.getElementById("he").setAttribute("cy", y(ev[i]));
+  const d = ev[i] - gas[i];
+  tip.innerHTML = `<b>Sell after ${i + 1} year${i ? "s" : ""}</b>
+    <div class="row"><i style="background:var(--gas)"></i><span>Gas car</span><em>${$(gas[i])}</em></div>
+    <div class="row"><i style="background:var(--ev)"></i><span>EV</span><em>${$(ev[i])}</em></div>
+    <div class="row" style="margin-top:3px;color:var(--muted)"><span>${d <= 0 ? "EV cheaper by" : "Gas cheaper by"}</span><em style="color:var(--ink)">${$(Math.abs(d))}</em></div>`;
+  tip.style.display = "block";
+  const tx = x(i) / scale, tw = tip.offsetWidth;
+  tip.style.left = (tx + 14 + tw > rect.width ? tx - 14 - tw : tx + 14) + "px";
+  tip.style.top = "8px";
+});
+chartEl.addEventListener("pointerleave", () => {
+  tip.style.display = "none";
+  const svg = chartEl.querySelector("svg"); if (!svg) return;
+  svg.getElementById("xh").setAttribute("visibility", "hidden");
+  svg.getElementById("hdots").setAttribute("visibility", "hidden");
+});
+
+/* ---------- Render ---------- */
+const ROWS = [
+  ["purchase", "Purchase, after rebate"], ["charger", "Home charger"], ["interest", "Loan interest"],
+  ["energy", "Fuel or electricity"], ["insurance", "Insurance"], ["maintenance", "Maintenance"],
+  ["tax", "Alberta EV tax"], ["resale", "Resale value (you get back)"],
+];
+const signed = v => (v > 0.5 ? "+" : v < -0.5 ? "−" : "") + $(Math.abs(v));
+
+function update() {
+  const p = state, r = compute(p), N = p.years;
+  const save = r.gas.total - r.ev.total;
+  const yrs = `${N} year${N > 1 ? "s" : ""}`;
+
+  document.getElementById("vEyebrow").textContent = `Over ${yrs} and ${(p.km * N).toLocaleString("en-CA")} km`;
+  document.getElementById("vBig").textContent = Math.abs(save) < 50 ? "About the same" :
+    save > 0 ? `EV saves ${$(save)}` : `Gas car saves ${$(-save)}`;
+  document.getElementById("vLine").textContent =
+    `Total cost: gas car ${$(r.gas.total)} vs EV ${$(r.ev.total)}, after selling each at the end. That's ${$(Math.abs(save) / N)} a year.`;
+  document.getElementById("mbarText").textContent = Math.abs(save) < 50 ? `About even over ${yrs}` :
+    save > 0 ? `EV saves ${$(save)} over ${yrs}` : `Gas saves ${$(-save)} over ${yrs}`;
+
+  const tb = document.getElementById("tBreak"), tbs = document.getElementById("tBreakS");
+  if (r.breakYear === 1) { tb.textContent = "Year 1"; tbs.textContent = "cheaper from the start"; }
+  else if (r.breakYear && r.breakYear <= N) { tb.textContent = `Year ${r.breakYear}`; tbs.textContent = "within your ownership"; }
+  else if (r.breakYear) { tb.textContent = `Year ${r.breakYear}`; tbs.textContent = `after you'd sell (year ${N})`; }
+  else { tb.textContent = "Not in 20 yrs"; tbs.textContent = "at these settings"; }
+  const runSave = r.gas.yearOne.run - r.ev.yearOne.run;
+  document.getElementById("tRun").textContent = signed(runSave).replace("+", "");
+  document.getElementById("tRun").title = runSave < 0 ? "Negative: the EV costs more to run" : "";
+  const km = p.km * N;
+  document.getElementById("tKm").textContent = `${(r.gas.total / km * 100).toFixed(0)}¢ · ${(r.ev.total / km * 100).toFixed(0)}¢`;
+  const tg = document.getElementById("tGas"), tgs = document.getElementById("tGasS");
+  if (r.breakGas === 0) { tg.textContent = "Any price"; tgs.textContent = "EV wins even with free gas"; }
+  else if (!isFinite(r.breakGas) || r.breakGas > 999) { tg.textContent = "Over $10/L"; tgs.textContent = "gas car wins"; }
+  else { tg.textContent = `${r.breakGas.toFixed(0)}¢/L`; tgs.textContent = r.breakGas < p.gasCents ? "below today's price, so the EV wins" : "above today's price, so gas wins"; }
+
+  // Breakdown table
+  document.getElementById("bdTitle").textContent = `Where the money goes over ${yrs}`;
+  const gb = r.gas.breakdown, eb = r.ev.breakdown;
+  document.getElementById("bdBody").innerHTML = ROWS.map(([k, label]) =>
+    `<tr><td>${label}</td><td class="num">${$(gb[k])}</td><td class="num">${$(eb[k])}</td><td class="num diff">${signed(eb[k] - gb[k])}</td></tr>`).join("");
+  document.getElementById("bdFoot").innerHTML =
+    `<tr><td>Total cost</td><td class="num">${$(r.gas.total)}</td><td class="num">${$(r.ev.total)}</td><td class="num">${signed(r.ev.total - r.gas.total)}</td></tr>`;
+  document.getElementById("yrBody").innerHTML = r.gas.netCost.map((g, i) =>
+    `<tr><td>${i + 1} yr</td><td class="num">${$(g)}</td><td class="num">${$(r.ev.netCost[i])}</td><td class="num diff">${signed(r.ev.netCost[i] - g)}</td></tr>`).join("");
+
+  drawChart(r.gas.netCost, r.ev.netCost);
+
+  // Hints show the default once a value moves; warnings; preset highlight.
+  for (const id in DEFS) {
+    document.getElementById("h_" + id).classList.toggle("changed", Math.abs(state[id] - DEFS[id].def) > 1e-9);
+    if (DEFS[id].warn) { const w = document.getElementById("w_" + id), msg = DEFS[id].warn(p); w.textContent = msg; w.classList.toggle("show", !!msg); }
+  }
+  document.querySelectorAll(".presets button").forEach(b =>
+    b.setAttribute("aria-pressed", String(Math.abs(state[b.dataset.for] - parseFloat(b.dataset.v)) < 1e-9)));
+
+  // Keep the URL in step so the settings can be bookmarked or shared.
+  const changed = Object.keys(DEFS).filter(id => Math.abs(state[id] - DEFS[id].def) > 1e-9).map(id => `${id}=${state[id]}`);
+  history.replaceState(null, "", changed.length ? "#" + changed.join("&") : location.pathname + location.search);
+}
+
+/* ---------- Init ---------- */
+function loadFromHash() {
+  for (const id in DEFS) setValue(id, DEFS[id].def);
+  for (const part of location.hash.slice(1).split("&")) {
+    const [k, v] = part.split("=");
+    if (DEFS[k] && v !== undefined) setValue(k, parseFloat(v), "num");
+  }
+}
+document.getElementById("resetAll").addEventListener("click", () => {
+  history.replaceState(null, "", location.pathname + location.search);
+  loadFromHash(); update();
+});
+document.getElementById("copyLink").addEventListener("click", async e => {
+  const b = e.currentTarget, old = b.textContent;
+  try { await navigator.clipboard.writeText(location.href); b.textContent = "Link copied"; }
+  catch { b.textContent = "Copy the address bar"; }
+  setTimeout(() => b.textContent = old, 1600);
+});
+let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(update, 120); });
+loadFromHash();
+update();
+</script>
+</body>
+</html>

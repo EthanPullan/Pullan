@@ -6,6 +6,7 @@ and the landing page (`index.html`) links to all of them.
 | Project | Folder | What it is |
 |---|---|---|
 | Glowfathom | [`tools/glowfathom/`](tools/glowfathom/) | A deep-sea arena shooter in the browser ([README](tools/glowfathom/README.md)) |
+| EV Switch Calculator | [`tools/ev-cost/`](tools/ev-cost/) | Gas car vs EV total cost of ownership in Alberta, with sliders and sourced defaults (single file) |
 
 ## Run it locally
 
