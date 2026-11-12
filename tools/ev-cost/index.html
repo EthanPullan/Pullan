@@ -42,7 +42,11 @@
   .hero-intro .steps{margin:0 0 22px;padding-left:20px;max-width:75ch;color:var(--muted);font-size:13.5px;line-height:1.6;}
 
   .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;align-items:start;}
-  .results{position:sticky;top:16px;display:flex;flex-direction:column;gap:16px;}
+  /* The results column stays in view while you scroll the settings. If it's taller than the window
+     it scrolls on its own, so the table at the bottom is always reachable. */
+  .results{position:sticky;top:16px;display:flex;flex-direction:column;gap:16px;
+    max-height:calc(100vh - 32px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;
+    padding-right:2px;}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
   details.group{margin-bottom:14px;}
@@ -109,16 +113,33 @@
   /* results */
   .verdict{padding:20px 22px;}
   .verdict .eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);}
-  .verdict .big{font-size:34px;font-weight:750;letter-spacing:-.02em;margin:4px 0 2px;}
-  .verdict .line{color:var(--muted);font-size:13.5px;}
+  /* Fixed heights here, so toggling cars doesn't push the chart up and down. */
+  .verdict .big{font-size:34px;font-weight:750;letter-spacing:-.02em;margin:4px 0 2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .verdict .line{color:var(--muted);font-size:13.5px;line-height:1.45;min-height:2.9em;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
   .tiles{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:1px;background:var(--line);
     border-top:1px solid var(--line);border-radius:0 0 var(--radius) var(--radius);overflow:hidden;}
-  .tile{background:var(--panel);padding:13px 14px;}
+  .tile{background:var(--panel);padding:13px 14px;min-width:0;}
+  .tile > div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* Five boxes in a narrow results column: tighten them rather than wrap, so heights stay fixed. */
+  .tiles-wrap{container-type:inline-size;}
+  @container (max-width:600px){
+    .tile{padding:11px 8px;}
+    .tile .v{font-size:15px;}
+    .tile .k,.tile .s{font-size:10.5px;}
+    .tile .k .dot{width:7px;height:7px;margin-right:4px;}
+  }
   .tile .k{font-size:11.5px;color:var(--muted);}
   .tile .v{font-size:18px;font-weight:700;margin-top:3px;}
   .tile .k .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:0;}
   .tile.best{box-shadow:inset 0 3px 0 var(--board);}
   .tile .s{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .breakeven{border-top:1px solid var(--line);padding:10px 16px;font-size:12px;color:var(--muted);
+    line-height:1.5;min-height:calc(3 * 1.5em + 20px);}
+  .breakeven b{color:var(--ink);font-weight:600;}
+  .breakeven .be i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+  .breakeven .be span{white-space:nowrap;}
 
   .chart-panel{padding:16px 18px 12px;}
   .chart-panel h2,.table-panel h2{margin:0;font-size:14.5px;}
@@ -144,6 +165,7 @@
   thead th{font-size:11.5px;color:var(--muted);font-weight:600;}
   tbody tr:last-child td{border-bottom:none;}
   tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:none;}
+  tfoot tr.per td{font-weight:600;color:var(--muted);border-top:0;padding-top:0;}
   td.num,th{white-space:nowrap;}
   .tscroll{overflow-x:auto;}
   .table-panel details{margin-top:10px;font-size:12.5px;}
@@ -158,9 +180,9 @@
 
   .short{display:none;}
   .mbar{display:none;}
-  @media (max-width:900px){
+  @media (max-width:1080px){
     .layout{grid-template-columns:minmax(0,1fr);}
-    .results{position:static;scroll-margin-top:12px;}
+    .results{position:static;scroll-margin-top:12px;max-height:none;overflow:visible;padding-right:0;}
     /* Live totals pinned to the bottom of the screen while you move sliders. */
     .mbar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:5;text-decoration:none;
       background:var(--board);color:#eaf2ef;padding:8px 12px calc(8px + env(safe-area-inset-bottom));
@@ -231,7 +253,8 @@
           <div class="big num" id="vBig">…</div>
           <div class="line" id="vLine"></div>
         </div>
-        <div class="tiles" id="tiles"></div>
+        <div class="tiles-wrap"><div class="tiles" id="tiles"></div></div>
+        <div class="breakeven" id="breakeven" title="The gas price at which each EV would cost the same as each gas option"></div>
       </section>
 
       <section class="panel chart-panel">
@@ -607,7 +630,7 @@ for (const g of GROUPS) {
   d.className = "panel group" + (g.car ? " car" : "");
   d.id = "g_" + g.id;
   if (g.car) d.style.setProperty("--c", `var(--${g.car})`);
-  d.open = g.open && (g === GROUPS[0] || !matchMedia("(max-width:900px)").matches);
+  d.open = g.open && (g === GROUPS[0] || !matchMedia("(max-width:1080px)").matches);
   d.innerHTML = `<summary>${g.car ? '<span class="cdot"></span>' : ""}<span>${g.title}${g.sub ? ` <span class="sub">${g.sub}</span>` : ""}</span>${
       g.car ? `<button type="button" class="sw" role="switch" data-opt="${g.car}" aria-label="Include ${g.title} in the comparison"><span></span><i></i></button>` : ""
     }</summary><div class="group-body">${g.users ? `<div class="for" id="for_${g.id}"></div>` : ""}</div>`;
@@ -919,12 +942,15 @@ function update() {
 
   document.getElementById("vEyebrow").textContent =
     `${n > 1 ? "Cheapest" : "Total cost"} over ${yrs} and ${(p.km * N).toLocaleString("en-CA")} km`;
-  document.getElementById("vBig").textContent = n === 1 ? `${best.o.name}: ${neg(best.t)}` :
-    margin < 50 ? `${best.o.name} or ${ranked[1].o.name}, about even` : best.o.name;
+  const vBig = document.getElementById("vBig");
+  vBig.textContent = n === 1 ? `${best.o.name}: ${neg(best.t)}` :
+    margin < 50 ? `${best.o.name} ≈ ${lc(ranked[1].o.name)}` : best.o.name;
+  vBig.title = vBig.textContent;
   document.getElementById("vLine").textContent =
-    (n > 1 && margin >= 50 ? `${$(margin)} cheaper than ${lc(ranked[1].o.name)}. ` : "") +
-    (n > 1 ? `Totals: ${SHOWN.map(o => `${lc(o.name)} ${neg(R[o.key].total)}`).join(", ")}.` : "Switch on another car to compare.") +
-    (p.keepLife < N && !hidden.has("keep") ? ` Your current car may not last ${yrs}.` : "");
+    (n === 1 ? "Switch on another car to compare." :
+      margin < 50 ? `Within $50 of each other, and ${neg(best.t / N)} a year.` :
+      `${$(margin)} cheaper than ${lc(ranked[1].o.name)}, the next cheapest. That's ${$(margin / N)} a year.`) +
+    (p.keepLife < N && on("keep") ? ` Your current car may not last ${yrs}.` : "");
   document.getElementById("mbarText").textContent = `Total cost over ${yrs}`;
   const kShort = v => (v < 0 ? "−" : "") + "$" + (Math.abs(v) >= 1000 ? Math.round(Math.abs(v) / 1000) + "k" : Math.round(Math.abs(v)));
   document.getElementById("mbarRow").innerHTML = SHOWN.map(o =>
@@ -936,16 +962,25 @@ function update() {
     const t = R[o.key].total, gap = t - best.t, isBest = o.key === best.o.key;
     const bk = r.breaks[o.key];
     return `<div class="tile${isBest ? " best" : ""}">
-      <div class="k"><span class="dot" style="background:${o.color}"></span>${o.name}</div>
+      <div class="k" title="${o.name}"><span class="dot" style="background:${o.color}"></span>${o.name}</div>
       <div class="v num">${neg(t)}</div>
-      <div class="s">${n === 1 ? "" : isBest ? "Cheapest · " : `+${$(gap)} vs cheapest · `}${(t / km * 100).toFixed(0)}¢/km</div>
-      ${bk && ["keep", "gas", "ugas"].some(on) ? `<div class="s" title="The gas price at which this EV would cost the same as each gas option">Break-even gas: ${[
-        on("keep") && `keep ${gasPrice(bk.keep)}`,
-        on("gas") && `new gas ${gasPrice(bk.gas)}`,
-        on("ugas") && `used gas ${gasPrice(bk.ugas)}`,
-      ].filter(Boolean).join(" · ")}</div>` : ""}
+      <div class="s">${n === 1 ? "&nbsp;" : isBest ? "Cheapest" : `+${$(gap)} more`}</div>
+      <div class="s">${neg(t / N)} a year</div>
+      <div class="s">${(t / km * 100).toFixed(0)}¢ per km</div>
     </div>`;
   }).join("");
+
+  // Break-even gas prices: one line per EV, in a strip with a fixed height.
+  const gasOpts = [["keep", "keeping"], ["gas", "new gas"], ["ugas", "used gas"]].filter(([k]) => on(k));
+  const evOpts = ["ev", "uev"].filter(on);
+  document.getElementById("breakeven").innerHTML =
+    !evOpts.length ? "Switch on an EV to see the gas price at which it would break even." :
+    !gasOpts.length ? "Switch on a gas option to see the gas price at which each EV would break even." :
+    "<b>Gas price where each EV breaks even</b>" + evOpts.map(k => {
+      const o = OPTIONS.find(x => x.key === k);
+      return `<div class="be"><i style="background:${o.color}"></i>${o.name}: ${gasOpts.map(([g, label]) =>
+        `<span>${gasPrice(r.breaks[k][g])} vs ${label}</span>`).join(" · ")}</div>`;
+    }).join("");
 
   // Breakdown table
   document.getElementById("bdTitle").textContent = `Where the money goes over ${yrs}`;
@@ -957,7 +992,8 @@ function update() {
     .map(([k, label]) =>
       `<tr><td>${label}</td>${SHOWN.map(o => `<td class="num">${neg(R[o.key].breakdown[k])}</td>`).join("")}</tr>`).join("");
   document.getElementById("bdFoot").innerHTML =
-    `<tr><td>Total cost</td>${SHOWN.map(o => `<td class="num">${neg(R[o.key].total)}</td>`).join("")}</tr>`;
+    `<tr><td>Total cost</td>${SHOWN.map(o => `<td class="num">${neg(R[o.key].total)}</td>`).join("")}</tr>` +
+    `<tr class="per"><td>Cost per year</td>${SHOWN.map(o => `<td class="num">${neg(R[o.key].total / N)}</td>`).join("")}</tr>`;
   document.getElementById("yrBody").innerHTML = R.keep.netCost.map((_, i) =>
     `<tr><td>${i + 1} yr</td>${SHOWN.map(o => `<td class="num">${neg(R[o.key].netCost[i])}</td>`).join("")}</tr>`).join("");
 
