@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Compare the full cost of owning a gas car and an electric vehicle in Alberta, with sliders for every assumption.">
+<meta name="description" content="Compare the full cost of owning a gas car and an electric vehicle in Alberta, with a card for each car and toggles for how you pay.">
 <meta name="theme-color" content="#1f3d35">
 <title>EV Switch Calculator</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23e0982e'/%3E%3C/svg%3E">
@@ -38,7 +38,8 @@
 
   .wrap{max-width:1240px;margin:0 auto;padding:26px 20px 60px;}
   .hero-intro h1{margin:0 0 6px;font-size:24px;letter-spacing:-.01em;}
-  .hero-intro p{margin:0 0 22px;max-width:75ch;color:var(--muted);font-size:14px;line-height:1.6;}
+  .hero-intro p{margin:0 0 8px;max-width:75ch;color:var(--muted);font-size:14px;line-height:1.6;}
+  .hero-intro .steps{margin:0 0 22px;padding-left:20px;max-width:75ch;color:var(--muted);font-size:13.5px;line-height:1.6;}
 
   .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;align-items:start;}
   .results{position:sticky;top:16px;display:flex;flex-direction:column;gap:16px;}
@@ -50,13 +51,39 @@
   details.group > summary::-webkit-details-marker{display:none;}
   details.group > summary::after{content:"▾";margin-left:auto;color:var(--muted);transition:transform .12s;}
   details.group:not([open]) > summary::after{transform:rotate(-90deg);}
-  details.group > summary .sub{font-weight:500;color:var(--muted);font-size:12.5px;}
+  details.group > summary .sub{font-weight:500;color:var(--muted);font-size:12.5px;margin-left:4px;}
   .group-body{padding:0 18px 8px;}
+  /* One card per car, edged in that car's colour, with a switch to include it. */
+  details.car{border-left:4px solid var(--c);}
+  details.car > summary::after{margin-left:2px;}
+  details.car .cdot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none;}
+  details.car.off{border-left-color:var(--line);}
+  details.car.off > summary{color:var(--muted);}
+  details.car.off .cdot{opacity:.35;}
+  details.car.off .group-body{display:none;}
+  details.car.off > summary::after{visibility:hidden;}
+  .sw{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:12px;font-weight:600;
+    color:var(--muted);background:none;border:0;padding:4px;cursor:pointer;white-space:nowrap;}
+  .sw i{width:32px;height:18px;border-radius:9px;background:#b9c3c8;position:relative;flex:none;transition:background .12s;}
+  .sw i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .12s;}
+  .sw[aria-checked=true]{color:var(--ink);}
+  .sw[aria-checked=true] i{background:var(--board);}
+  .sw[aria-checked=true] i::after{transform:translateX(14px);}
+  .sw:disabled{opacity:.55;cursor:not-allowed;}
+  /* Shared cards say which cars they apply to. */
+  .for{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:0 0 10px;font-size:12px;color:var(--muted);}
+  .for span{display:inline-flex;align-items:center;gap:5px;color:var(--ink);font-weight:600;}
+  .for i{width:8px;height:8px;border-radius:50%;}
+  /* The less-used settings in each card. */
+  details.fine{border-top:1px solid var(--grid);padding:10px 0 4px;}
+  details.fine > summary{cursor:pointer;color:var(--board);font-weight:600;font-size:12.5px;}
+  details.fine > summary .cnt{color:var(--muted);font-weight:500;}
+  details.fine[open] > summary{margin-bottom:10px;}
 
   .ctl{padding:12px 0;border-top:1px solid var(--grid);}
   .ctl-head{display:flex;align-items:baseline;gap:10px;}
   .ctl-head label{font-weight:600;font-size:13.5px;flex:1;}
-  .ctl-head .tag{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px;}
   .valbox{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:13px;}
   .valbox input{width:86px;text-align:right;font:inherit;padding:3px 6px;border:1px solid var(--line);
     border-radius:6px;background:var(--panel-2);color:var(--ink);}
@@ -64,6 +91,7 @@
   input[type=range]{width:100%;margin:8px 0 2px;accent-color:var(--board);}
   .hint{font-size:12px;color:var(--muted);line-height:1.5;}
   .hint.changed::before{content:"Default: " attr(data-default) " · ";color:var(--ink);}
+  .hint.changed:empty::before{content:"Default: " attr(data-default);}
   .presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
   .presets button{font:inherit;font-size:11.5px;padding:3px 9px;border-radius:20px;border:1px solid var(--line);
     background:var(--panel-2);color:var(--ink);cursor:pointer;}
@@ -83,14 +111,6 @@
   .verdict .eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);}
   .verdict .big{font-size:34px;font-weight:750;letter-spacing:-.02em;margin:4px 0 2px;}
   .verdict .line{color:var(--muted);font-size:13.5px;}
-  .compare{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;}
-  .compare .lab{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-right:2px;}
-  .compare button{font:inherit;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;
-    padding:6px 11px;border-radius:20px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);cursor:pointer;}
-  .compare button .dot{width:9px;height:9px;border-radius:50%;opacity:.35;}
-  .compare button[aria-pressed=true]{background:var(--panel);color:var(--ink);border-color:var(--board);}
-  .compare button[aria-pressed=true] .dot{opacity:1;}
-  .compare button[aria-pressed=false]{text-decoration:line-through;}
   .tiles{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:1px;background:var(--line);
     border-top:1px solid var(--line);border-radius:0 0 var(--radius) var(--radius);overflow:hidden;}
   .tile{background:var(--panel);padding:13px 14px;}
@@ -148,7 +168,6 @@
     .mbar .mhead{display:flex;justify-content:space-between;font-size:11px;color:#b9cdc6;margin-bottom:5px;}
     .mbar .mhead b{color:#fbe6c8;font-weight:600;}
     .mbar .mrow{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:6px;}
-    .compare button{padding:9px 13px;}
     .mbar .mc{background:rgba(255,255,255,.06);border-radius:7px;padding:5px 7px;border:1px solid transparent;min-width:0;}
     .mbar .mc.best{border-color:#fbe6c8;background:rgba(251,230,200,.12);}
     .mbar .mc .n{font-size:10.5px;color:#cfe0da;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -162,10 +181,13 @@
     .seg button{padding:10px 14px;font-size:13.5px;}
     .btn{padding:9px 12px;}
     details.group > summary{padding:16px 18px;}
+    details.fine > summary{padding:6px 0;}
+    .sw{padding:8px 4px;}
     .full{display:none;} .short{display:inline;}
   }
   @media (max-width:620px){
     .wrap{padding:18px 16px 48px;}
+    details.car > summary .sub{display:none;}
     .tiles{grid-template-columns:repeat(min(2,var(--n,4)),minmax(0,1fr));}
     .table-panel{padding:16px 12px;}
     .table-panel table{font-size:11.5px;} .table-panel th,.table-panel td{padding:6px 2px;}
@@ -189,17 +211,20 @@
 <main class="wrap">
   <section class="hero-intro">
     <h1>Should I switch to an EV?</h1>
-    <p>Compare four choices in Alberta: keep the car you have, buy a new gas car, buy a new EV, or buy a used EV. It counts the
-      purchase, rebate, financing, fuel versus charging, insurance, maintenance, the provincial EV tax, resale
-      value, and the investment growth you give up on money spent on the car. Most sliders start on a
-      researched Alberta figure (sources at the bottom). Set the "current car" and "used EV" sliders to the cars you're looking at.</p>
+    <p>Compare four choices in Alberta: keep the car you have, buy a new gas car, buy a new EV, or buy a used EV.
+      The totals count the purchase, rebate, loan, fuel or charging, insurance, maintenance, the provincial EV tax,
+      resale value, and the investment growth you give up on money spent on the car.</p>
+    <ol class="steps">
+      <li>Switch off any car you aren't considering. Its settings fold away.</li>
+      <li>Fill in each car's card with the cars you're looking at. Start with your current car and any used EV, since those defaults are placeholders.</li>
+      <li>Leave "Fine-tune" closed unless you want to adjust the smaller assumptions. They start on researched Alberta figures (sources at the bottom).</li>
+    </ol>
   </section>
 
   <div class="layout">
     <div id="controls"></div>
 
     <div class="results" id="results">
-      <section class="panel compare" id="compare" aria-label="Choose which options to compare"><span class="lab">Compare</span></section>
       <section class="panel">
         <div class="verdict">
           <div class="eyebrow" id="vEyebrow">Over 8 years</div>
@@ -324,8 +349,8 @@
         insurance, repairs) is treated as money that would otherwise have earned your expected return, and money
         coming back (selling your current car, resale at the end) as money that starts earning it. The totals
         are how much smaller your investments would be at the end. This treats cash buyers and borrowers the same
-        way: a loan cheaper than your expected return comes out ahead of paying cash. Set the return to 0% to
-        ignore it.</li>
+        way: a loan cheaper than your expected return comes out ahead of paying cash. Switch "Count lost investment
+        growth" to No to ignore it.</li>
       <li class="muted">5% is a rough long-run figure for a balanced portfolio held in a TFSA, before inflation.
         If the money would otherwise pay down a mortgage or other debt, use that interest rate instead.</li>
     </ul>
@@ -350,122 +375,154 @@ const GAS_PRESETS = [
   { label: "Sep 2026", value: 164.9 },
 ];
 
-/* ---------- Slider definitions ---------- */
+/* ---------- Control definitions ----------
+   One card per car (car: its option key) holds everything specific to that car. The other cards
+   are shared; `users` lists the cars a shared card applies to, and it hides when none are compared.
+   adv: true puts a control under the card's "Fine-tune" fold. show(p, on) hides a control that
+   doesn't apply right now (on(key) says whether that car is being compared). */
+const REBATES = [5000, 4000, 0];
+const rebateOf = p => REBATES[p.rebateOpt];
+const worth = (start, dep, p) =>
+  `Worth about ${$(start * Math.pow(1 - dep / 100, p.years))} after ${p.years} year${p.years > 1 ? "s" : ""}.`;
+const onLoan = (p, on, keys) => keys.some(k => on(k) && p[{ gas: "payGas", ev: "payEv", uev: "payUev" }[k]] === 0);
+
 const GROUPS = [
-  { id: "vehicles", title: "New vehicles", sub: "price, rebate, charger", open: true, items: [
-    { id: "gasPrice", label: "Gas car price", who: "gas", min: 15000, max: 100000, step: 500, def: 38000, fmt: "$",
+  { id: "driving", title: "Your driving", sub: "applies to every car", open: true, items: [
+    { id: "km", label: "Distance per year", min: 5000, max: 50000, step: 500, def: 15000, fmt: "km",
+      hint: "Canadians drive about 15,000 km a year on average." },
+    { id: "years", label: "Years to compare", min: 1, max: 15, step: 1, def: 8, fmt: "yr",
+      hint: "How long you'd keep whichever car you choose. The longer it is, the more the running costs matter." },
+  ]},
+  { id: "current", car: "keep", title: "Your current car", sub: "if you keep it", open: true, items: [
+    { id: "keepValue", label: "What it would sell for today", min: 0, max: 40000, step: 250, def: 8000, fmt: "$",
+      hint: "Check a trade-in or private-sale estimate. Keeping the car means not having this money." },
+    { id: "keepEff", label: "Fuel use", min: 4, max: 18, step: 0.1, def: 9.5, fmt: "L/100km",
+      hint: "Look up its combined rating in NRCan's Fuel Consumption Guide. Older cars often use a little more than rated." },
+    { id: "keepIns", label: "Insurance", min: 500, max: 6000, step: 50, def: 1900, fmt: "$/yr",
+      hint: "Placeholder, so use your actual bill. Older cars are often cheaper to insure, especially without collision cover." },
+    { id: "keepMaint", label: "Maintenance and repairs, this year", min: 0, max: 6000, step: 50, def: 1500, fmt: "$/yr",
+      hint: "Placeholder. Average what you've spent over the last two or three years." },
+    { id: "keepMaintGrowth", adv: true, label: "Repair costs increase per year", min: 0, max: 25, step: 1, def: 8, fmt: "%/yr",
+      hint: "Older cars need more repairs as they age. This replaces the general increase for this car." },
+    { id: "keepDep", adv: true, label: "Value lost per year", min: 0, max: 25, step: 0.5, def: 10, fmt: "%/yr",
+      hint: "Older cars lose value more slowly in dollar terms.",
+      note: p => worth(p.keepValue, p.keepDep, p) },
+    { id: "keepLife", adv: true, label: "Years it has left", min: 1, max: 20, step: 1, def: 10, fmt: "yr",
+      hint: "Roughly how long before it needs replacing anyway.",
+      warn: p => p.keepLife < p.years ? `Your car may not last the ${p.years} years you're comparing over, so the "keep" total is too low. Try comparing over ${p.keepLife} years instead.` : "" },
+  ]},
+  { id: "gascar", car: "gas", title: "New gas car", sub: "", open: true, items: [
+    { id: "gasPrice", label: "Price", min: 15000, max: 100000, step: 500, def: 38000, fmt: "$",
       hint: "The price before tax. 5% GST is added for you.",
       note: p => `With GST you pay ${$(p.gasPrice * 1.05)}.` },
-    { id: "evPrice", label: "New EV price", who: "ev", min: 20000, max: 120000, step: 500, def: 48000, fmt: "$",
-      hint: "The price before tax and before the rebate. 5% GST is added for you.",
-      note: p => p.rebate > 0
-        ? `GST is charged on the full price, then the rebate comes off: ${$(p.evPrice * 1.05)} − ${$(Math.min(p.rebate, p.evPrice * 1.05))} = ${$(p.evPrice * 1.05 - Math.min(p.rebate, p.evPrice * 1.05))}.`
-        : `With GST you pay ${$(p.evPrice * 1.05)}.` },
-    { id: "rebate", label: "Federal EV rebate (new only)", who: "ev", min: 0, max: 5000, step: 250, def: 5000, fmt: "$",
-      hint: "Electric Vehicle Affordability Program: up to $5,000 at the dealer in 2026, $4,000 from Jan 1, 2027. New cars only, one per person.",
-      warn: p => p.evPrice > 50000 && p.rebate > 0 ? "Over $50,000, only EVs built in Canada qualify. Set this to $0 if yours isn't." : "" },
-    { id: "charger", label: "Home charger, installed", who: "ev", min: 0, max: 4000, step: 100, def: 1800, fmt: "$",
-      hint: "A Level 2 charger and install typically costs $1,200–$2,500. Use $0 if you'll plug into a regular outlet." },
+    { id: "gasEff", label: "Fuel use", min: 4, max: 16, step: 0.1, def: 8.5, fmt: "L/100km",
+      hint: "Use the combined rating from NRCan's Fuel Consumption Guide. A compact SUV is about 8–9." },
+    { id: "insGas", label: "Insurance", min: 800, max: 6000, step: 50, def: 2344, fmt: "$/yr",
+      hint: "Alberta average gas-car quote, 2025 (Surex). A real quote is far better." },
+    { id: "maintGas", label: "Maintenance", min: 0, max: 3000, step: 50, def: 1000, fmt: "$/yr",
+      hint: "Oil changes, brakes, filters, tires, belts and fluids." },
+    { id: "depGas", adv: true, label: "Value lost per year", min: 5, max: 25, step: 0.5, def: 13, fmt: "%/yr",
+      hint: "13% a year leaves about a third of the price after 8 years.",
+      note: p => worth(p.gasPrice, p.depGas, p) },
   ]},
-  { id: "used", title: "Used EV", sub: "no rebate in Alberta", open: true, items: [
-    { id: "uevPrice", label: "Used EV asking price", who: "uev", min: 5000, max: 80000, step: 500, def: 30000, fmt: "$",
+  { id: "evcar", car: "ev", title: "New EV", sub: "", open: true, items: [
+    { id: "evPrice", label: "Price", min: 20000, max: 120000, step: 500, def: 48000, fmt: "$",
+      hint: "The price before tax and before the rebate. 5% GST is added for you.",
+      note: p => rebateOf(p) > 0
+        ? `GST is charged on the full price, then the rebate comes off: ${$(p.evPrice * 1.05)} − ${$(Math.min(rebateOf(p), p.evPrice * 1.05))} = ${$(p.evPrice * 1.05 - Math.min(rebateOf(p), p.evPrice * 1.05))}.`
+        : `With GST you pay ${$(p.evPrice * 1.05)}.` },
+    { id: "rebateOpt", label: "Federal rebate", choices: ["$5,000", "$4,000", "None"], def: 0,
+      hint: "$5,000 off at the dealer if you buy in 2026, $4,000 from Jan 1, 2027. New cars only, one per person.",
+      warn: p => p.evPrice > 50000 && rebateOf(p) > 0 ? "Over $50,000, only EVs built in Canada qualify. Choose None if yours isn't." : "" },
+    { id: "insEv", label: "Insurance", min: 800, max: 7000, step: 50, def: 3343, fmt: "$/yr",
+      hint: "Alberta average EV quote, 2025 (Surex): 43% above gas, the widest gap in Canada. A real quote is far better." },
+    { id: "maintEv", label: "Maintenance", min: 0, max: 3000, step: 50, def: 550, fmt: "$/yr",
+      hint: "CAA estimates EV maintenance runs 40–50% lower than gas." },
+    { id: "depEv", adv: true, label: "Value lost per year", min: 5, max: 30, step: 0.5, def: 16, fmt: "%/yr",
+      hint: "16% a year leaves about a quarter after 8 years. Used-EV prices are the most uncertain number here.",
+      note: p => worth(Math.max(0, p.evPrice - rebateOf(p)), p.depEv, p) },
+  ]},
+  { id: "used", car: "uev", title: "Used EV", sub: "no rebate in Alberta", open: true, items: [
+    { id: "uevPrice", label: "Asking price", min: 5000, max: 80000, step: 500, def: 30000, fmt: "$",
       hint: "The price before tax. No rebate applies: the federal one is for new cars only, and Alberta has none." },
-    { id: "uevSeller", label: "Buying from", who: "uev", choices: ["Dealer", "Private seller"], def: 0,
+    { id: "uevSeller", label: "Buying from", choices: ["Dealer", "Private seller"], def: 0,
       hint: "Alberta has no PST. Dealers charge 5% GST on used cars, but a private sale has no GST. Private sales come without a dealer inspection or reconditioning, and some lenders won't finance them.",
       note: p => p.uevSeller === 0
         ? `Dealer adds ${$(p.uevPrice * 0.05)} GST, so you pay ${$(p.uevPrice * 1.05)}.`
         : `No GST on a private sale, so you pay ${$(p.uevPrice)}.` },
-    { id: "uevAge", label: "Its age when you buy it", who: "uev", min: 0, max: 12, step: 1, def: 3, fmt: "yr",
-      hint: "Used to work out how much of the usual 8-year / 160,000 km battery warranty is left." },
-    { id: "uevBatt", label: "Battery allowance once the warranty ends", who: "uev", min: 0, max: 3000, step: 50, def: 400, fmt: "$/yr",
-      hint: "Set aside each year after the battery warranty runs out. Most batteries outlast the car, but an out-of-warranty replacement can cost five figures." },
-    { id: "uevIns", label: "Used EV insurance", who: "uev", min: 800, max: 7000, step: 50, def: 3000, fmt: "$/yr",
+    { id: "uevAge", label: "Its age when you buy it", min: 0, max: 12, step: 1, def: 3, fmt: "yr",
+      hint: "Used to work out how much of the usual 8-year / 160,000 km battery warranty is left.",
+      note: p => p.uevAge >= 8 ? "The battery warranty has already run out." : `About ${8 - p.uevAge} year${8 - p.uevAge > 1 ? "s" : ""} of battery warranty left.` },
+    { id: "uevIns", label: "Insurance", min: 800, max: 7000, step: 50, def: 3000, fmt: "$/yr",
       hint: "Estimate: a bit below the new-EV average, since the car is worth less. Get a quote." },
-    { id: "uevMaint", label: "Used EV maintenance", who: "uev", min: 0, max: 3000, step: 50, def: 700, fmt: "$/yr",
+    { id: "uevMaint", label: "Maintenance", min: 0, max: 3000, step: 50, def: 700, fmt: "$/yr",
       hint: "A little above a new EV, since its general warranty will run out sooner." },
-    { id: "uevDep", label: "Used EV value lost per year", who: "uev", min: 0, max: 30, step: 0.5, def: 12, fmt: "%/yr",
-      hint: "A used EV has already taken the steepest drop. Used-EV prices swung a lot in 2026." },
-    { id: "uevApr", label: "Used car loan interest rate", who: "uev", min: 0, max: 18, step: 0.1, def: 8.0, fmt: "%",
-      hint: "Used-car loans usually cost a point or two more than new. Loan term and down payment are shared with the new cars." },
+    { id: "uevBatt", adv: true, label: "Battery allowance once the warranty ends", min: 0, max: 3000, step: 50, def: 400, fmt: "$/yr",
+      hint: "Set aside each year after the battery warranty runs out. Most batteries outlast the car, but an out-of-warranty replacement can cost five figures." },
+    { id: "uevDep", adv: true, label: "Value lost per year", min: 0, max: 30, step: 0.5, def: 12, fmt: "%/yr",
+      hint: "A used EV has already taken the steepest drop. Used-EV prices swung a lot in 2026.",
+      note: p => worth(p.uevPrice, p.uevDep, p) },
   ]},
-  { id: "current", title: "Your current car", sub: "if you keep it", open: true, items: [
-    { id: "keepValue", label: "What it would sell for today", who: "keep", min: 0, max: 40000, step: 250, def: 8000, fmt: "$",
-      hint: "Check a trade-in or private-sale estimate. Keeping the car means not having this money." },
-    { id: "keepEff", label: "Its fuel use", who: "keep", min: 4, max: 18, step: 0.1, def: 9.5, fmt: "L/100km",
-      hint: "Look up its combined rating in NRCan's Fuel Consumption Guide. Older cars often use a little more than rated." },
-    { id: "keepIns", label: "Its insurance", who: "keep", min: 500, max: 6000, step: 50, def: 1900, fmt: "$/yr",
-      hint: "Placeholder, so use your actual bill. Older cars are often cheaper to insure, especially without collision cover." },
-    { id: "keepMaint", label: "Its maintenance and repairs, this year", who: "keep", min: 0, max: 6000, step: 50, def: 1500, fmt: "$/yr",
-      hint: "Placeholder. Average what you've spent over the last two or three years." },
-    { id: "keepMaintGrowth", label: "Repair costs increase per year", who: "keep", min: 0, max: 25, step: 1, def: 8, fmt: "%/yr",
-      hint: "Older cars need more repairs as they age. This replaces the general increase for this car." },
-    { id: "keepDep", label: "Value lost per year", who: "keep", min: 0, max: 25, step: 0.5, def: 10, fmt: "%/yr",
-      hint: "Older cars lose value more slowly in dollar terms." },
-    { id: "keepLife", label: "Years it has left", who: "keep", min: 1, max: 20, step: 1, def: 10, fmt: "yr",
-      hint: "Roughly how long before it needs replacing anyway.",
-      warn: p => p.keepLife < p.years ? `Your car may not last the ${p.years} years you're comparing over, so the "keep" total is too low. Try comparing over ${p.keepLife} years instead.` : "" },
-  ]},
-  { id: "driving", title: "Your driving", sub: "distance, years, efficiency", open: true, items: [
-    { id: "km", label: "Distance per year", min: 5000, max: 50000, step: 500, def: 15000, fmt: "km",
-      hint: "Canadians drive about 15,000 km a year on average." },
-    { id: "years", label: "Years you'll keep it", min: 1, max: 15, step: 1, def: 8, fmt: "yr",
-      hint: "The longer you keep it, the more the lower running costs add up." },
-    { id: "gasEff", label: "Gas car fuel use", who: "gas", min: 4, max: 16, step: 0.1, def: 8.5, fmt: "L/100km",
-      hint: "Use the combined rating from NRCan's Fuel Consumption Guide. A compact SUV is about 8–9." },
-    { id: "evEff", label: "EV energy use", who: "ev", min: 12, max: 30, step: 0.5, def: 19, fmt: "kWh/100km",
-      hint: "Use the combined rating. A compact EV SUV is about 17–20." },
-    { id: "evWinter", label: "EV cold-weather penalty", who: "ev", min: 0, max: 40, step: 1, def: 15, fmt: "%",
-      hint: "Extra energy averaged over the whole year. On –20 °C days it can be 30–40%, but summer has none." },
-    { id: "gasWinter", label: "Gas car cold-weather penalty", who: "gas", min: 0, max: 20, step: 1, def: 5, fmt: "%",
-      hint: "Gas cars also use more fuel in winter (warm-up, idling), though less than EVs." },
-  ]},
-  { id: "energy", title: "Fuel and charging", sub: "gas, electricity, public charging", open: true, items: [
-    { id: "gasCents", label: "Gas price today", who: "gas", min: 80, max: 220, step: 0.5, def: 143.4, fmt: "¢/L", presets: GAS_PRESETS,
+  { id: "gas", title: "Gas", users: ["keep", "gas"], open: true, items: [
+    { id: "gasCents", label: "Gas price today", min: 80, max: 220, step: 0.5, def: 143.4, fmt: "¢/L", presets: GAS_PRESETS,
       hint: "Regular self-serve, Calgary and Edmonton average (StatCan)." },
-    { id: "gasEsc", label: "Gas price change per year", who: "gas", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
+    { id: "gasEsc", adv: true, label: "Gas price change per year", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
       hint: "2% roughly tracks inflation." },
-    { id: "energyRate", label: "Electricity energy charge", who: "ev", min: 4, max: 35, step: 0.1, def: 8.29, fmt: "¢/kWh",
-      hint: "8.29¢ is a typical 2-year fixed-rate contract in 2026. The default Rate of Last Resort, if you haven't signed one, is about 12.0¢." },
-    { id: "delivery", label: "Electricity delivery and fees", who: "ev", min: 0, max: 15, step: 0.1, def: 7.0, fmt: "¢/kWh",
-      hint: "Per-kWh transmission, distribution and local access fees (Calgary is about 7¢). GST is added for you." },
-    { id: "elecEsc", label: "Electricity price change per year", who: "ev", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
-      hint: "Also applied to the public charging price." },
-    { id: "awayPct", label: "Charged elsewhere (public chargers)", who: "ev", min: 0, max: 100, step: 5, def: 5, fmt: "%",
-      hint: "The share of charging not done at home, such as road trips, or living without a home charger. The rest is charged at home." },
-    { id: "publicPrice", label: "Average public charging price", who: "ev", min: 0, max: 1.0, step: 0.01, def: 0.67, fmt: "$/kWh",
-      hint: "Alberta's average fast-charging price is $0.67/kWh (Paren, mid-2026), among the highest in Canada. Public Level 2 is cheaper (about $1–$2.50 an hour), so lower this if you'll use those or get free charging at work." },
-    { id: "chargeLoss", label: "Home charging losses", who: "ev", min: 0, max: 25, step: 1, def: 10, fmt: "%",
-      hint: "Energy lost between the meter and the battery. Level 2 is typically 8–12%." },
+    { id: "gasWinter", adv: true, label: "Extra fuel used in cold weather", min: 0, max: 20, step: 1, def: 5, fmt: "%",
+      hint: "Averaged over the whole year. Gas cars use more fuel in winter (warm-up, idling), though less than EVs." },
   ]},
-  { id: "ownership", title: "Insurance, maintenance and resale", sub: "", open: false, items: [
-    { id: "insGas", label: "Gas car insurance", who: "gas", min: 800, max: 6000, step: 50, def: 2344, fmt: "$/yr",
-      hint: "Alberta average gas-car quote, 2025 (Surex). A real quote is far better." },
-    { id: "insEv", label: "EV insurance", who: "ev", min: 800, max: 7000, step: 50, def: 3343, fmt: "$/yr",
-      hint: "Alberta average EV quote, 2025 (Surex): 43% above gas, the widest gap in Canada." },
-    { id: "maintGas", label: "Gas car maintenance", who: "gas", min: 0, max: 3000, step: 50, def: 1000, fmt: "$/yr",
-      hint: "Oil changes, brakes, filters, tires, belts and fluids." },
-    { id: "maintEv", label: "EV maintenance", who: "ev", min: 0, max: 3000, step: 50, def: 550, fmt: "$/yr",
-      hint: "CAA estimates EV maintenance runs 40–50% lower." },
-    { id: "evTax", label: "Alberta EV tax", who: "ev", min: 0, max: 500, step: 10, def: 200, fmt: "$/yr",
+  { id: "charging", title: "Electricity and charging", users: ["ev", "uev"], open: true, items: [
+    { id: "evEff", label: "EV energy use", min: 12, max: 30, step: 0.5, def: 19, fmt: "kWh/100km",
+      hint: "Use the combined rating. A compact EV SUV is about 17–20." },
+    { id: "chargerOpt", label: "Home charger", choices: ["Install Level 2", "None needed"], def: 0,
+      hint: "Choose None needed if you'll plug into a regular outlet or already have a charger." },
+    { id: "charger", label: "Charger and installation cost", min: 0, max: 4000, step: 100, def: 1800, fmt: "$",
+      show: p => p.chargerOpt === 0,
+      hint: "A Level 2 charger and install typically costs $1,200–$2,500." },
+    { id: "energyRate", label: "Electricity price on your plan", min: 4, max: 35, step: 0.1, def: 8.29, fmt: "¢/kWh",
+      hint: "The energy charge only. 8.29¢ is a typical 2-year fixed-rate contract in 2026. If you haven't signed one, you're on the Rate of Last Resort, about 12.0¢.",
+      note: p => `With delivery, fees and GST, home charging costs about ${((p.energyRate + p.delivery) * 1.05).toFixed(1)}¢ per kWh.` },
+    { id: "awayPct", label: "Share charged at public chargers", min: 0, max: 100, step: 5, def: 5, fmt: "%",
+      hint: "Charging not done at home, such as road trips, or living without a home charger. The rest is charged at home." },
+    { id: "delivery", adv: true, label: "Electricity delivery and fees", min: 0, max: 15, step: 0.1, def: 7.0, fmt: "¢/kWh",
+      hint: "Per-kWh transmission, distribution and local access fees (Calgary is about 7¢). GST is added for you." },
+    { id: "publicPrice", adv: true, label: "Average public charging price", min: 0, max: 1.0, step: 0.01, def: 0.67, fmt: "$/kWh",
+      hint: "Alberta's average fast-charging price is $0.67/kWh (Paren, mid-2026), among the highest in Canada. Public Level 2 is cheaper (about $1–$2.50 an hour), so lower this if you'll use those or get free charging at work." },
+    { id: "elecEsc", adv: true, label: "Electricity price change per year", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
+      hint: "Also applied to the public charging price." },
+    { id: "evWinter", adv: true, label: "Extra energy used in cold weather", min: 0, max: 40, step: 1, def: 15, fmt: "%",
+      hint: "Averaged over the whole year. On –20 °C days it can be 30–40%, but summer has none." },
+    { id: "chargeLoss", adv: true, label: "Home charging losses", min: 0, max: 25, step: 1, def: 10, fmt: "%",
+      hint: "Energy lost between the meter and the battery. Level 2 is typically 8–12%." },
+    { id: "evTax", adv: true, label: "Alberta EV tax", min: 0, max: 500, step: 10, def: 200, fmt: "$/yr",
       hint: "Paid at registration since 2025, on top of normal registration." },
+  ]},
+  { id: "money", title: "Paying and investing", sub: "loan or cash", open: true, items: [
+    { id: "payGas", label: "Pay for the new gas car with", choices: ["Loan", "Cash"], def: 0, show: (p, on) => on("gas") },
+    { id: "payEv", label: "Pay for the new EV with", choices: ["Loan", "Cash"], def: 0, show: (p, on) => on("ev") },
+    { id: "payUev", label: "Pay for the used EV with", choices: ["Loan", "Cash"], def: 0, show: (p, on) => on("uev") },
+    { id: "down", label: "Down payment", min: 0, max: 100, step: 5, def: 20, fmt: "%",
+      show: (p, on) => onLoan(p, on, ["gas", "ev", "uev"]),
+      hint: "The share of the price (after rebate) paid upfront, from savings or from selling your current car. Used for every loan." },
+    { id: "term", label: "Loan length", min: 12, max: 96, step: 12, def: 72, fmt: "months",
+      show: (p, on) => onLoan(p, on, ["gas", "ev", "uev"]),
+      hint: "Used for every loan. If you sell before it's paid off, the remaining balance comes out of the sale." },
+    { id: "apr", label: "Interest rate, new car loan", min: 0, max: 15, step: 0.1, def: 6.5, fmt: "%",
+      show: (p, on) => onLoan(p, on, ["gas", "ev"]) },
+    { id: "uevApr", label: "Interest rate, used EV loan", min: 0, max: 18, step: 0.1, def: 8.0, fmt: "%",
+      show: (p, on) => onLoan(p, on, ["uev"]),
+      hint: "Used-car loans usually cost a point or two more than new." },
+    { id: "investOn", label: "Count lost investment growth", choices: ["Yes", "No"], def: 0,
+      hint: "Money spent on a car can't sit in your investments. Yes adds the growth you'd miss out on to every total." },
+    { id: "invest", label: "Expected investment return", min: 0, max: 12, step: 0.5, def: 5, fmt: "%/yr",
+      show: p => p.investOn === 0,
+      hint: "What money not spent on the car would earn. If it would pay down a mortgage or other debt instead, use that interest rate." },
+  ]},
+  { id: "trends", title: "Insurance and repairs over time", sub: "applies to every car", open: false, items: [
     { id: "costEsc", label: "Insurance and maintenance increase per year", min: 0, max: 10, step: 0.5, def: 3, fmt: "%/yr",
       hint: "Alberta insurance has risen faster than inflation recently." },
-    { id: "insValueShare", label: "Part of your premium tied to the car's value", min: 0, max: 100, step: 5, def: 40, fmt: "%",
-      hint: "Collision and comprehensive cover gets cheaper as a car loses value, but liability doesn't. This share of each car's premium falls in step with its value. Set to 0% to turn it off." },
-    { id: "depGas", label: "Gas car value lost per year", who: "gas", min: 5, max: 25, step: 0.5, def: 13, fmt: "%/yr",
-      hint: "13% a year leaves about a third of the price after 8 years." },
-    { id: "depEv", label: "EV value lost per year", who: "ev", min: 5, max: 30, step: 0.5, def: 16, fmt: "%/yr",
-      hint: "16% a year leaves about a quarter after 8 years. Used-EV prices are the most uncertain number here." },
-  ]},
-  { id: "finance", title: "Financing and investing", sub: "loans and the cost of money", open: true, items: [
-    { id: "invest", label: "Expected investment return", min: 0, max: 12, step: 0.5, def: 5, fmt: "%/yr",
-      hint: "What money not spent on the car would earn. Set to 0% to ignore investment growth." },
-    { id: "apr", label: "Loan interest rate", min: 0, max: 15, step: 0.1, def: 6.5, fmt: "%",
-      hint: "For the new cars (the used EV has its own rate). Set the down payment to 100% if paying cash." },
-    { id: "term", label: "Loan term", min: 12, max: 96, step: 12, def: 72, fmt: "months",
-      hint: "If you sell before it's paid off, the remaining balance comes out of the sale." },
-    { id: "down", label: "Down payment", min: 0, max: 100, step: 5, def: 20, fmt: "%",
-      hint: "The share of the price (after rebate) paid upfront, from savings or from selling your current car." },
+    { id: "insValueShare", label: "Share of insurance that falls as the car loses value", min: 0, max: 100, step: 5, def: 40, fmt: "%",
+      hint: "Collision and comprehensive cover gets cheaper as a car loses value, but liability doesn't. Set to 0% to keep premiums from falling." },
   ]},
 ];
 const DEFS = Object.fromEntries(GROUPS.flatMap(g => g.items).map(i => [i.id, i]));
@@ -483,48 +540,59 @@ function fmtVal(def, v) {
 /* ---------- Build controls ---------- */
 const state = {};
 const controlsEl = document.getElementById("controls");
-for (const g of GROUPS) {
-  const d = document.createElement("details");
-  d.className = "panel group";
-  d.open = g.open && (g === GROUPS[0] || !matchMedia("(max-width:900px)").matches);
-  d.innerHTML = `<summary>${g.title}${g.sub ? ` <span class="sub">${g.sub}</span>` : ""}</summary><div class="group-body"></div>`;
-  const body = d.querySelector(".group-body");
-  for (const it of g.items) {
-    state[it.id] = it.def;
-    const tag0 = it.who ? `<span class="tag" style="background:var(--${it.who})"></span>` : "";
-    if (it.choices) {
-      const el = document.createElement("div");
-      el.className = "ctl";
-      el.innerHTML = `
-        <div class="ctl-head">
-          <label id="l_${it.id}">${tag0}${it.label}</label>
-          <span class="seg" role="group" aria-labelledby="l_${it.id}">${it.choices.map((c, i) =>
-            `<button type="button" data-choice="${it.id}" data-v="${i}">${c}</button>`).join("")}</span>
-        </div>
-        <div class="hint" id="h_${it.id}" data-default="${it.choices[it.def]}">${it.hint}</div>
-        ${it.note ? `<div class="note" id="o_${it.id}"></div>` : ""}`;
-      body.appendChild(el);
-      continue;
-    }
-    const unit = it.fmt === "$" ? "" : it.fmt;
-    const tag = it.who ? `<span class="tag" style="background:var(--${it.who})" title="${{ ev: "New EV", gas: "New gas car", keep: "Your current car", uev: "Used EV" }[it.who]}"></span>` : "";
-    const el = document.createElement("div");
-    el.className = "ctl";
+const OPT_NAMES = { keep: "Your current car", gas: "New gas car", ev: "New EV", uev: "Used EV" };
+function makeCtl(it, g) {
+  const el = document.createElement("div");
+  el.className = "ctl";
+  el.id = "c_" + it.id;
+  const extras = `
+    ${it.note ? `<div class="note" id="o_${it.id}"></div>` : ""}
+    ${it.warn ? `<div class="warn" id="w_${it.id}"></div>` : ""}`;
+  if (it.choices) {
     el.innerHTML = `
       <div class="ctl-head">
-        <label for="r_${it.id}">${tag}${it.label}</label>
-        <span class="valbox">${it.fmt === "$" ? '<span class="unit">$</span>' : ""}
-          <input type="number" inputmode="decimal" id="n_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}" aria-label="${it.label}">
-          ${unit ? `<span class="unit">${unit}</span>` : ""}</span>
+        <label id="l_${it.id}">${it.label}</label>
+        <span class="seg" role="group" aria-labelledby="l_${it.id}">${it.choices.map((c, i) =>
+          `<button type="button" data-choice="${it.id}" data-v="${i}">${c}</button>`).join("")}</span>
       </div>
-      <input type="range" id="r_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}">
-      <div class="hint" id="h_${it.id}" data-default="${fmtVal(it, it.def)}">${it.hint}</div>
-      ${it.presets ? `<div class="presets">${it.presets.map(p =>
-        `<button type="button" data-for="${it.id}" data-v="${p.value}">${p.label} · ${p.value}¢</button>`).join("")}</div>` : ""}
-      ${it.note ? `<div class="note" id="o_${it.id}"></div>` : ""}
-      ${it.warn ? `<div class="warn" id="w_${it.id}"></div>` : ""}`;
-    body.appendChild(el);
+      <div class="hint" id="h_${it.id}" data-default="${it.choices[it.def]}">${it.hint || ""}</div>${extras}`;
+    return el;
   }
+  const unit = it.fmt === "$" ? "" : it.fmt;
+  el.innerHTML = `
+    <div class="ctl-head">
+      <label for="r_${it.id}">${it.label}</label>
+      <span class="valbox">${it.fmt === "$" ? '<span class="unit">$</span>' : ""}
+        <input type="number" inputmode="decimal" id="n_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}" aria-label="${g.title}: ${it.label}">
+        ${unit ? `<span class="unit">${unit}</span>` : ""}</span>
+    </div>
+    <input type="range" id="r_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}">
+    <div class="hint" id="h_${it.id}" data-default="${fmtVal(it, it.def)}">${it.hint || ""}</div>
+    ${it.presets ? `<div class="presets">${it.presets.map(p =>
+      `<button type="button" data-for="${it.id}" data-v="${p.value}">${p.label} · ${p.value}¢</button>`).join("")}</div>` : ""}${extras}`;
+  return el;
+}
+for (const g of GROUPS) {
+  const d = document.createElement("details");
+  d.className = "panel group" + (g.car ? " car" : "");
+  d.id = "g_" + g.id;
+  if (g.car) d.style.setProperty("--c", `var(--${g.car})`);
+  d.open = g.open && (g === GROUPS[0] || !matchMedia("(max-width:900px)").matches);
+  d.innerHTML = `<summary>${g.car ? '<span class="cdot"></span>' : ""}<span>${g.title}${g.sub ? ` <span class="sub">${g.sub}</span>` : ""}</span>${
+      g.car ? `<button type="button" class="sw" role="switch" data-opt="${g.car}" aria-label="Include ${g.title} in the comparison"><span></span><i></i></button>` : ""
+    }</summary><div class="group-body">${g.users ? `<div class="for" id="for_${g.id}"></div>` : ""}</div>`;
+  const body = d.querySelector(".group-body");
+  let fine = null;
+  if (g.items.some(it => it.adv)) {
+    fine = document.createElement("details");
+    fine.className = "fine";
+    fine.innerHTML = `<summary>Fine-tune <span class="cnt" id="fc_${g.id}"></span></summary>`;
+  }
+  for (const it of g.items) {
+    state[it.id] = it.def;
+    (it.adv ? fine : body).appendChild(makeCtl(it, g));
+  }
+  if (fine) body.appendChild(fine);
   controlsEl.appendChild(d);
 }
 
@@ -550,6 +618,16 @@ controlsEl.addEventListener("input", e => {
   update();
 });
 controlsEl.addEventListener("click", e => {
+  // The switch in a car card's header: include that car in the comparison or leave it out.
+  const sw = e.target.closest("[data-opt]");
+  if (sw) {
+    e.preventDefault(); // don't also fold the card
+    const k = sw.dataset.opt;
+    if (hidden.has(k)) { hidden.delete(k); sw.closest("details").open = true; }
+    else if (hidden.size < OPTIONS.length - 1) hidden.add(k);
+    update();
+    return;
+  }
   const c = e.target.closest("[data-choice]");
   if (c) { setValue(c.dataset.choice, parseFloat(c.dataset.v)); update(); return; }
   const b = e.target.closest(".presets button");
@@ -577,9 +655,9 @@ function simulate(p, kind, years) {
   const gst = used && p.uevSeller !== 0 ? 0 : 0.05;
   const price = preTax * (1 + gst);
   // The dealer applies GST to the full price first, then takes the rebate off (new EVs only).
-  const rebate = kind === "ev" ? Math.min(p.rebate, price) : 0;
+  const rebate = kind === "ev" ? Math.min(rebateOf(p), price) : 0;
   const net = price - rebate;
-  const charger = ev ? p.charger : 0;
+  const charger = ev && p.chargerOpt === 0 ? p.charger : 0;
   // Used EV: battery allowance starts once the 8-year battery warranty runs out.
   const warrantyLeft = used ? Math.max(0, 8 - p.uevAge) : Infinity;
   // Keeping your car ties up what it could sell for today, so that counts as its starting cost.
@@ -594,12 +672,13 @@ function simulate(p, kind, years) {
   const maintEsc = keep ? p.keepMaintGrowth : p.costEsc;
   const tax = ev ? p.evTax : 0;
 
-  // Loan
-  let bal = keep ? 0 : net * (1 - p.down / 100);
+  // Loan (none if you keep your car or pay cash)
+  const cash = keep || { gas: p.payGas, ev: p.payEv, uev: p.payUev }[kind] === 1;
+  let bal = cash ? 0 : net * (1 - p.down / 100);
   const r = (used ? p.uevApr : p.apr) / 100 / 12, n = p.term;
   const pay = bal <= 0 ? 0 : r > 0 ? bal * r / (1 - Math.pow(1 + r, -n)) : bal / n;
 
-  const rm = Math.pow(1 + p.invest / 100, 1 / 12) - 1;
+  const rm = Math.pow(1 + (p.investOn === 0 ? p.invest : 0) / 100, 1 / 12) - 1;
   const upfront = kept + net - bal + charger;
   let fv = upfront, nominal = upfront;
   const b = { purchase: net, kept, charger, interest: 0, energy: 0, insurance: 0, maintenance: 0, battery: 0, tax: 0, resale: 0, growth: 0 };
@@ -756,31 +835,39 @@ function gasPrice(bg) {
 const swatch = o => o.dash
   ? `<i style="border-color:${o.color};border-top-style:${o.dash.startsWith("1") ? "dotted" : "dashed"}"></i>`
   : `<i style="border-color:${o.color}"></i>`;
-// Which options are being compared. At least one stays on.
+// Which options are being compared (switched in each car card's header). At least one stays on.
 const hidden = new Set();
-const compareEl = document.getElementById("compare");
-compareEl.insertAdjacentHTML("beforeend", OPTIONS.map(o =>
-  `<button type="button" data-opt="${o.key}"><span class="dot" style="background:${o.color}"></span>${o.name}</button>`).join(""));
-compareEl.addEventListener("click", e => {
-  const b = e.target.closest("[data-opt]");
-  if (!b) return;
-  const k = b.dataset.opt;
-  if (hidden.has(k)) hidden.delete(k);
-  else if (hidden.size < OPTIONS.length - 1) hidden.add(k);
-  update();
-});
+const on = k => !hidden.has(k);
 
 function update() {
   const p = state, r = compute(p), N = p.years, R = r.res;
   const yrs = `${N} year${N > 1 ? "s" : ""}`;
   const SHOWN = OPTIONS.filter(o => !hidden.has(o.key));
   const n = SHOWN.length;
-  document.querySelectorAll("[data-opt]").forEach(b => {
-    const on = !hidden.has(b.dataset.opt);
-    b.setAttribute("aria-pressed", String(on));
-    b.disabled = on && n === 1; // keep at least one option on
-    b.title = on && n === 1 ? "At least one option stays on" : "";
-  });
+  // Cards: fold away cars that are switched off, shared cards nobody uses, and controls that don't apply.
+  for (const g of GROUPS) {
+    const d = document.getElementById("g_" + g.id);
+    if (g.car) {
+      const isOn = on(g.car), b = d.querySelector(".sw");
+      d.classList.toggle("off", !isOn);
+      b.setAttribute("aria-checked", String(isOn));
+      b.firstElementChild.textContent = isOn ? "Comparing" : "Not comparing";
+      b.disabled = isOn && n === 1; // keep at least one option on
+      b.title = isOn && n === 1 ? "At least one car stays on" : "";
+    }
+    if (g.users) {
+      d.hidden = !g.users.some(on);
+      document.getElementById("for_" + g.id).innerHTML = "Applies to" + g.users.filter(on).map(k =>
+        `<span><i style="background:var(--${k})"></i>${OPT_NAMES[k]}</span>`).join("");
+    }
+    for (const it of g.items) if (it.show) document.getElementById("c_" + it.id).hidden = !it.show(p, on);
+    const adv = g.items.filter(it => it.adv);
+    if (adv.length) {
+      const moved = adv.filter(it => Math.abs(state[it.id] - it.def) > 1e-9).length;
+      document.getElementById("fc_" + g.id).textContent =
+        `· ${adv.length} more setting${adv.length > 1 ? "s" : ""}${moved ? `, ${moved} changed` : ""}`;
+    }
+  }
   document.getElementById("tiles").style.setProperty("--n", n);
   document.getElementById("mbarRow").style.setProperty("--n", n);
   const ranked = SHOWN.map(o => ({ o, t: R[o.key].total })).sort((a, b) => a.t - b.t);
@@ -792,7 +879,7 @@ function update() {
     margin < 50 ? `${best.o.name} or ${ranked[1].o.name}, about even` : best.o.name;
   document.getElementById("vLine").textContent =
     (n > 1 && margin >= 50 ? `${$(margin)} cheaper than ${lc(ranked[1].o.name)}. ` : "") +
-    (n > 1 ? `Totals: ${SHOWN.map(o => `${lc(o.name)} ${neg(R[o.key].total)}`).join(", ")}.` : "Turn on another option above to compare.") +
+    (n > 1 ? `Totals: ${SHOWN.map(o => `${lc(o.name)} ${neg(R[o.key].total)}`).join(", ")}.` : "Switch on another car to compare.") +
     (p.keepLife < N && !hidden.has("keep") ? ` Your current car may not last ${yrs}.` : "");
   document.getElementById("mbarText").textContent = `Total cost over ${yrs}`;
   const kShort = v => (v < 0 ? "−" : "") + "$" + (Math.abs(v) >= 1000 ? Math.round(Math.abs(v) / 1000) + "k" : Math.round(Math.abs(v)));
@@ -854,6 +941,7 @@ function loadFromHash() {
   for (const part of location.hash.slice(1).split("&")) {
     const [k, v] = part.split("=");
     if (DEFS[k] && v !== undefined) setValue(k, parseFloat(v), "num");
+    if (k === "rebate" && v !== undefined) setValue("rebateOpt", v >= 4500 ? 0 : v >= 2000 ? 1 : 2); // links from before the rebate became a choice
     if (k === "hide" && v) for (const h of v.split(".")) if (OPTIONS.some(o => o.key === h)) hidden.add(h);
   }
   if (hidden.size >= OPTIONS.length) hidden.clear();
