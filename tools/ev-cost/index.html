@@ -143,6 +143,10 @@
 
   .chart-panel{padding:16px 18px 12px;}
   .chart-panel h2,.table-panel h2{margin:0;font-size:14.5px;}
+  .chart-head{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;}
+  .chart-head .seg button{font-size:12px;padding:5px 10px;}
+  .chart-panel .cap{min-height:2.9em;}
+  @media (max-width:620px){ .chart-head h2{min-height:2.9em;} .chart-panel .cap{min-height:4.35em;} }
   .chart-panel .cap{margin:3px 0 8px;font-size:12px;color:var(--muted);}
   .legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;margin-bottom:4px;}
   .legend span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
@@ -258,8 +262,13 @@
       </section>
 
       <section class="panel chart-panel">
-        <h2>Total cost if you sell at the end of each year</h2>
-        <p class="cap">Everything you've paid so far plus the investment growth it cost you, minus what the car would sell for. Where lines cross, the cheaper choice changes.</p>
+        <div class="chart-head">
+          <h2 id="chartTitle">Total cost if you sell at the end of each year</h2>
+          <span class="seg" role="group" aria-label="What the chart shows">
+            <button type="button" data-chart="0">Total cost</button><button type="button" data-chart="1">Compared with keeping</button>
+          </span>
+        </div>
+        <p class="cap" id="chartCap"></p>
         <div class="legend" id="legend"></div>
         <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
       </section>
@@ -692,7 +701,7 @@ controlsEl.addEventListener("click", e => {
 /* ---------- Model ---------- */
 const OPTIONS = [
   { key: "keep", name: "Keep your car", short: "Keep", color: "var(--keep)", dash: "6 4" },
-  { key: "gas", name: "New gas car", short: "Gas", color: "var(--gas)" },
+  { key: "gas", name: "New gas car", short: "New gas", color: "var(--gas)" },
   { key: "ugas", name: "Used gas car", short: "Used gas", color: "var(--ugas)", dash: "8 3 2 3" },
   { key: "ev", name: "New EV", short: "New EV", color: "var(--ev)" },
   { key: "uev", name: "Used EV", short: "Used EV", color: "var(--uev)", dash: "1 4" },
@@ -816,19 +825,23 @@ function niceStep(range) {
   const raw = range / 5, mag = Math.pow(10, Math.floor(Math.log10(raw)));
   return [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw);
 }
+let chartMode = 0; // 0: total cost; 1: compared with keeping your car (keeping = $0)
 function drawChart(series) {
   const W = Math.max(300, chartEl.clientWidth), Hh = Math.round(Math.min(300, Math.max(200, W * 0.45)));
   const m = { t: 14, r: 66, b: 26, l: 52 };
   const n = series[0].data.length;
   const all = series.flatMap(s => s.data);
-  let lo = Math.min(0, ...all), hi = Math.max(...all);
-  const step = niceStep(hi - lo || 1);
+  let lo = Math.min(0, ...all), hi = Math.max(0, ...all);
+  if (hi - lo < 1000) hi = lo + 1000; // e.g. only "keep" shown in compared mode: a flat line at $0
+  const step = niceStep(hi - lo);
   lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
   const x = i => m.l + (n === 1 ? (W - m.l - m.r) / 2 : i * (W - m.l - m.r) / (n - 1));
   const y = v => m.t + (hi - v) / (hi - lo) * (Hh - m.t - m.b);
-  const kfmt = v => (v < 0 ? "−" : "") + "$" + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000).toFixed(Math.abs(v) % 1000 ? 1 : 0) + "k" : Math.abs(v));
+  const kfmt = v => (v < 0 ? "−" : v > 0 && chartMode ? "+" : "") + "$" + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000).toFixed(Math.abs(v) % 1000 ? 1 : 0) + "k" : Math.abs(v));
 
-  let s = `<svg xmlns="${NS}" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Line chart of total cost by year for keeping your car, a new gas car and an EV">`;
+  let s = `<svg xmlns="${NS}" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="${chartMode
+    ? "Line chart of how much more each option costs than keeping your car, by year"
+    : "Line chart of total cost by year for each option"}">`;
   for (let v = lo; v <= hi + 1e-6; v += step)
     s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>
           <text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${kfmt(v)}</text>`;
@@ -836,6 +849,8 @@ function drawChart(series) {
   for (let i = 0; i < n; i++) if ((i + 1) % every === 0 || i === 0)
     s += `<text x="${x(i)}" y="${Hh - 8}" text-anchor="middle">${i === 0 ? "Yr 1" : i + 1}</text>`;
   const path = d => d.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1)).join("");
+  // In compared mode, $0 is keeping your car: draw it as a firm baseline even if "keep" is switched off.
+  if (chartMode) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--muted)" stroke-width="1.5"/>`;
   s += `<line id="xh" y1="${m.t}" y2="${Hh - m.b}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
   for (const se of series) {
     s += `<path d="${path(se.data)}" fill="none" stroke="${se.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${se.dash ? ` stroke-dasharray="${se.dash}"` : ""}/>`;
@@ -863,8 +878,9 @@ function showTip(e) {
   svg.getElementById("hdots").setAttribute("visibility", "visible");
   series.forEach((se, k) => { const c = svg.getElementById("hd" + k); c.setAttribute("cx", x(i)); c.setAttribute("cy", y(se.data[i])); });
   const rows = series.map(se => ({ se, v: se.data[i] })).sort((a, b) => a.v - b.v);
-  tip.innerHTML = `<b>Sell after ${i + 1} year${i ? "s" : ""}</b>` + rows.map(({ se, v }) =>
-    `<div class="row"><i style="background:${se.color}"></i><span>${se.name}</span><em>${$(v)}</em></div>`).join("") +
+  const fmtTip = v => chartMode ? (Math.abs(v) < 0.5 ? "$0" : (v > 0 ? "+" : "−") + $(Math.abs(v))) : $(v);
+  tip.innerHTML = `<b>Sell after ${i + 1} year${i ? "s" : ""}${chartMode ? ", vs keeping your car" : ""}</b>` + rows.map(({ se, v }) =>
+    `<div class="row"><i style="background:${se.color}"></i><span>${se.name}</span><em>${fmtTip(v)}</em></div>`).join("") +
     `<div class="row" style="margin-top:3px;color:var(--muted)"><span>Cheapest: ${rows[0].se.name}</span></div>`;
   tip.style.display = "block";
   const tx = x(i) / scale, tw = tip.offsetWidth;
@@ -872,6 +888,10 @@ function showTip(e) {
   tip.style.top = "8px";
 }
 chartEl.addEventListener("pointermove", showTip);
+document.querySelector(".chart-head").addEventListener("click", e => {
+  const b = e.target.closest("[data-chart]");
+  if (b) { chartMode = +b.dataset.chart; update(); }
+});
 chartEl.addEventListener("pointerdown", showTip);
 function hideTip() {
   tip.style.display = "none";
@@ -998,7 +1018,14 @@ function update() {
     `<tr><td>${i + 1} yr</td>${SHOWN.map(o => `<td class="num">${neg(R[o.key].netCost[i])}</td>`).join("")}</tr>`).join("");
 
   document.getElementById("legend").innerHTML = SHOWN.map(o => `<span>${swatch(o)}${o.name}</span>`).join("");
-  drawChart(SHOWN.map(o => ({ ...o, data: R[o.key].netCost })));
+  const base = R.keep.netCost;
+  drawChart(SHOWN.map(o => ({ ...o, data: chartMode ? R[o.key].netCost.map((v, i) => v - base[i]) : R[o.key].netCost })));
+  document.querySelectorAll("[data-chart]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.chart === chartMode)));
+  document.getElementById("chartTitle").textContent = chartMode
+    ? "Cost compared with keeping your car" : "Total cost if you sell at the end of each year";
+  document.getElementById("chartCap").textContent = chartMode
+    ? "Keeping your car is the $0 line. Each line shows how much more (+) or less (−) an option has cost by that year, investment growth and resale included."
+    : "Everything you've paid so far plus the investment growth it cost you, minus what the car would sell for. Where lines cross, the cheaper choice changes.";
 
   // Hints show the default once a value moves; warnings; preset highlight.
   for (const id in DEFS) {
@@ -1012,6 +1039,7 @@ function update() {
   // Keep the URL in step so the settings can be bookmarked or shared.
   const changed = Object.keys(DEFS).filter(id => Math.abs(state[id] - DEFS[id].def) > 1e-9).map(id => `${id}=${state[id]}`);
   if (hidden.size) changed.push("hide=" + [...hidden].join("."));
+  if (chartMode) changed.push("chart=vskeep");
   history.replaceState(null, "", changed.length ? "#" + changed.join("&") : location.pathname + location.search);
 }
 
@@ -1019,10 +1047,12 @@ function update() {
 function loadFromHash() {
   for (const id in DEFS) setValue(id, DEFS[id].def);
   hidden.clear();
+  chartMode = 0;
   for (const part of location.hash.slice(1).split("&")) {
     const [k, v] = part.split("=");
     if (DEFS[k] && v !== undefined) setValue(k, parseFloat(v), "num");
     if (k === "rebate" && v !== undefined) setValue("rebateOpt", v >= 4500 ? 0 : v >= 2000 ? 1 : 2); // links from before the rebate became a choice
+    if (k === "chart") chartMode = v === "vskeep" ? 1 : 0;
     if (k === "hide" && v) for (const h of v.split(".")) if (OPTIONS.some(o => o.key === h)) hidden.add(h);
   }
   if (hidden.size >= OPTIONS.length) hidden.clear();
