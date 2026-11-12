@@ -369,7 +369,7 @@
       <li>The used EV uses the same driving, charging, electricity and home-charger settings as the new EV, so it
         assumes a similar model. It pays the $200 Alberta EV tax as well.</li>
       <li>Battery: most EVs from 2020 on carry an 8-year / 160,000 km battery warranty that transfers to later owners.
-        The calculator works out how many warranty years are left from the car's age, then adds your battery allowance
+        The calculator works out how many warranty years are left from the car's age, then adds your battery allowance (if you set one; it's $0 by default)
         for each year after that. Check the odometer too, because high-mileage cars can reach the km limit first. A
         third-party battery health report costs about $100–$150, and recent data across 30 brands puts the average
         battery health around 93%.</li>
@@ -518,8 +518,8 @@ const GROUPS = [
       hint: "Estimate: a bit below the new-EV average, since the car is worth less. Get a quote." },
     { id: "uevMaint", label: "Maintenance", min: 0, max: 3000, step: 50, def: 700, fmt: "$/yr",
       hint: "A little above a new EV, since its general warranty will run out sooner." },
-    { id: "uevBatt", adv: true, label: "Battery allowance once the warranty ends", min: 0, max: 3000, step: 50, def: 400, fmt: "$/yr",
-      hint: "Set aside each year after the battery warranty runs out. Most batteries outlast the car, but an out-of-warranty replacement can cost five figures." },
+    { id: "uevBatt", adv: true, label: "Battery allowance once the warranty ends", min: 0, max: 3000, step: 50, def: 0, fmt: "$/yr",
+      hint: "$0 by default, since most batteries outlast the car. Add an amount to set aside each year after the battery warranty runs out, because an out-of-warranty replacement can cost five figures." },
     { id: "uevDep", adv: true, label: "Value lost per year", min: 0, max: 30, step: 0.5, def: 12, fmt: "%/yr",
       hint: "A used EV has already taken the steepest drop. Used-EV prices swung a lot in 2026.",
       note: p => worth(p.uevPrice, p.uevDep, p) },
