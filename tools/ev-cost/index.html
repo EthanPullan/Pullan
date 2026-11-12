@@ -12,7 +12,7 @@
     --app-bg:#e9edf0; --panel:#fff; --panel-2:#f4f6f8;
     --ink:#16241f; --muted:#67756f; --line:#d8dee2; --grid:#e6eaed;
     --board:#1f3d35; --accent:#e0982e; --accent-soft:#fbe6c8;
-    --gas:#c9821f; --ev:#2f6f9f; --keep:#2aa198; --uev:#b8457a; --ev-soft:#dde9f3; --gas-soft:#fbe6c8;
+    --gas:#c9821f; --ev:#2f6f9f; --keep:#2aa198; --uev:#b8457a; --ugas:#6b7a1f; --ev-soft:#dde9f3; --gas-soft:#fbe6c8;
     --warn-ink:#8a5a12; --warn-bg:#fdf3e1;
     --shadow:0 1px 2px rgba(20,40,33,.06),0 6px 18px rgba(20,40,33,.06); --radius:12px;
     --sans:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -321,6 +321,14 @@
         guidance; one guide says the opposite, so confirm with the dealer.</li>
     </ul>
 
+    <h3>Used gas car</h3>
+    <ul>
+      <li>It shares the gas price and cold-weather settings with the other gas cars. Its price, insurance, maintenance
+        and depreciation defaults are placeholders for a roughly 3-year-old compact SUV, not Alberta data, so use real
+        listings and a quote. GST works as for the used EV (5% from a dealer, none in a private sale), and a loan
+        uses the used-car interest rate.</li>
+    </ul>
+
     <h3>Used EVs</h3>
     <ul>
       <li>GST: Alberta has no PST. A dealer charges 5% GST on a used car, and a private sale of a used vehicle has
@@ -339,7 +347,7 @@
 
     <h3>Your current car and the cost of money</h3>
     <ul>
-      <li>All three options start from the car you own today. If you buy, it's sold or traded in the day you buy.
+      <li>Every option starts from the car you own today. If you buy, it's sold or traded in the day you buy.
         If you keep it, the money you could have had by selling it counts as a cost, and the car keeps losing value
         and needing more repairs each year. The differences between options come out the same either way. This just
         keeps the totals readable.</li>
@@ -348,8 +356,10 @@
       <li>Investment growth given up: every dollar that leaves your pocket (down payment, loan payments, fuel,
         insurance, repairs) is treated as money that would otherwise have earned your expected return, and money
         coming back (selling your current car, resale at the end) as money that starts earning it. The totals
-        are how much smaller your investments would be at the end. This treats cash buyers and borrowers the same
-        way: a loan cheaper than your expected return comes out ahead of paying cash. Switch "Count lost investment
+        are how much smaller your investments would be at the end. It's counted relative to keeping your car, so
+        keeping shows $0 and each other option shows the extra growth it gives up (a negative figure means it gives up
+        less). That shifts every total by the same amount, so the gaps between options don't change. This treats cash
+        buyers and borrowers the same way: a loan cheaper than your expected return comes out ahead of paying cash. Switch "Count lost investment
         growth" to No to ignore it.</li>
       <li class="muted">5% is a rough long-run figure for a balanced portfolio held in a TFSA, before inflation.
         If the money would otherwise pay down a mortgage or other debt, use that interest rate instead.</li>
@@ -384,7 +394,8 @@ const REBATES = [5000, 4000, 0];
 const rebateOf = p => REBATES[p.rebateOpt];
 const worth = (start, dep, p) =>
   `Worth about ${$(start * Math.pow(1 - dep / 100, p.years))} after ${p.years} year${p.years > 1 ? "s" : ""}.`;
-const onLoan = (p, on, keys) => keys.some(k => on(k) && p[{ gas: "payGas", ev: "payEv", uev: "payUev" }[k]] === 0);
+const PAY = { gas: "payGas", ugas: "payUgas", ev: "payEv", uev: "payUev" };
+const onLoan = (p, on, keys) => keys.some(k => on(k) && p[PAY[k]] === 0);
 
 const GROUPS = [
   { id: "driving", title: "Your driving", sub: "applies to every car", open: true, items: [
@@ -425,6 +436,24 @@ const GROUPS = [
       hint: "13% a year leaves about a third of the price after 8 years.",
       note: p => worth(p.gasPrice, p.depGas, p) },
   ]},
+  { id: "usedgas", car: "ugas", title: "Used gas car", sub: "", open: true, items: [
+    { id: "ugasPrice", label: "Asking price", min: 3000, max: 80000, step: 500, def: 26000, fmt: "$",
+      hint: "The price before tax. Placeholder: about what a 3-year-old compact SUV costs, so use real listings." },
+    { id: "ugasSeller", label: "Buying from", choices: ["Dealer", "Private seller"], def: 0,
+      hint: "Alberta has no PST. Dealers charge 5% GST on used cars, but a private sale has no GST. Private sales come without a dealer inspection or reconditioning, and some lenders won't finance them.",
+      note: p => p.ugasSeller === 0
+        ? `Dealer adds ${$(p.ugasPrice * 0.05)} GST, so you pay ${$(p.ugasPrice * 1.05)}.`
+        : `No GST on a private sale, so you pay ${$(p.ugasPrice)}.` },
+    { id: "ugasEff", label: "Fuel use", min: 4, max: 18, step: 0.1, def: 8.8, fmt: "L/100km",
+      hint: "Look up its combined rating in NRCan's Fuel Consumption Guide." },
+    { id: "ugasIns", label: "Insurance", min: 500, max: 6000, step: 50, def: 2150, fmt: "$/yr",
+      hint: "Estimate: a bit below the new gas car, since it's worth less. Get a quote." },
+    { id: "ugasMaint", label: "Maintenance and repairs", min: 0, max: 4000, step: 50, def: 1300, fmt: "$/yr",
+      hint: "A little above a new gas car: it's out of its bumper-to-bumper warranty sooner and parts wear with age." },
+    { id: "ugasDep", adv: true, label: "Value lost per year", min: 0, max: 25, step: 0.5, def: 11, fmt: "%/yr",
+      hint: "A used car has already taken the steepest drop, so it loses value more slowly than a new one.",
+      note: p => worth(p.ugasPrice, p.ugasDep, p) },
+  ]},
   { id: "evcar", car: "ev", title: "New EV", sub: "", open: true, items: [
     { id: "evPrice", label: "Price", min: 20000, max: 120000, step: 500, def: 48000, fmt: "$",
       hint: "The price before tax and before the rebate. 5% GST is added for you.",
@@ -463,7 +492,7 @@ const GROUPS = [
       hint: "A used EV has already taken the steepest drop. Used-EV prices swung a lot in 2026.",
       note: p => worth(p.uevPrice, p.uevDep, p) },
   ]},
-  { id: "gas", title: "Gas", users: ["keep", "gas"], open: true, items: [
+  { id: "gas", title: "Gas", users: ["keep", "gas", "ugas"], open: true, items: [
     { id: "gasCents", label: "Gas price today", min: 80, max: 220, step: 0.5, def: 143.4, fmt: "¢/L", presets: GAS_PRESETS,
       hint: "Regular self-serve, Calgary and Edmonton average (StatCan)." },
     { id: "gasEsc", adv: true, label: "Gas price change per year", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
@@ -499,18 +528,19 @@ const GROUPS = [
   ]},
   { id: "money", title: "Paying and investing", sub: "loan or cash", open: true, items: [
     { id: "payGas", label: "Pay for the new gas car with", choices: ["Loan", "Cash"], def: 0, show: (p, on) => on("gas") },
+    { id: "payUgas", label: "Pay for the used gas car with", choices: ["Loan", "Cash"], def: 0, show: (p, on) => on("ugas") },
     { id: "payEv", label: "Pay for the new EV with", choices: ["Loan", "Cash"], def: 0, show: (p, on) => on("ev") },
     { id: "payUev", label: "Pay for the used EV with", choices: ["Loan", "Cash"], def: 0, show: (p, on) => on("uev") },
     { id: "down", label: "Down payment", min: 0, max: 100, step: 5, def: 20, fmt: "%",
-      show: (p, on) => onLoan(p, on, ["gas", "ev", "uev"]),
+      show: (p, on) => onLoan(p, on, ["gas", "ugas", "ev", "uev"]),
       hint: "The share of the price (after rebate) paid upfront, from savings or from selling your current car. Used for every loan." },
     { id: "term", label: "Loan length", min: 12, max: 96, step: 12, def: 72, fmt: "months",
-      show: (p, on) => onLoan(p, on, ["gas", "ev", "uev"]),
+      show: (p, on) => onLoan(p, on, ["gas", "ugas", "ev", "uev"]),
       hint: "Used for every loan. If you sell before it's paid off, the remaining balance comes out of the sale." },
     { id: "apr", label: "Interest rate, new car loan", min: 0, max: 15, step: 0.1, def: 6.5, fmt: "%",
       show: (p, on) => onLoan(p, on, ["gas", "ev"]) },
-    { id: "uevApr", label: "Interest rate, used EV loan", min: 0, max: 18, step: 0.1, def: 8.0, fmt: "%",
-      show: (p, on) => onLoan(p, on, ["uev"]),
+    { id: "uevApr", label: "Interest rate, used car loan", min: 0, max: 18, step: 0.1, def: 8.0, fmt: "%",
+      show: (p, on) => onLoan(p, on, ["uev", "ugas"]),
       hint: "Used-car loans usually cost a point or two more than new." },
     { id: "investOn", label: "Count lost investment growth", choices: ["Yes", "No"], def: 0,
       hint: "Money spent on a car can't sit in your investments. Yes adds the growth you'd miss out on to every total." },
@@ -540,7 +570,7 @@ function fmtVal(def, v) {
 /* ---------- Build controls ---------- */
 const state = {};
 const controlsEl = document.getElementById("controls");
-const OPT_NAMES = { keep: "Your current car", gas: "New gas car", ev: "New EV", uev: "Used EV" };
+const OPT_NAMES = { keep: "Your current car", gas: "New gas car", ugas: "Used gas car", ev: "New EV", uev: "Used EV" };
 function makeCtl(it, g) {
   const el = document.createElement("div");
   el.className = "ctl";
@@ -640,6 +670,7 @@ controlsEl.addEventListener("click", e => {
 const OPTIONS = [
   { key: "keep", name: "Keep your car", short: "Keep", color: "var(--keep)", dash: "6 4" },
   { key: "gas", name: "New gas car", short: "Gas", color: "var(--gas)" },
+  { key: "ugas", name: "Used gas car", short: "Used gas", color: "var(--ugas)", dash: "8 3 2 3" },
   { key: "ev", name: "New EV", short: "New EV", color: "var(--ev)" },
   { key: "uev", name: "Used EV", short: "Used EV", color: "var(--uev)", dash: "1 4" },
 ];
@@ -649,31 +680,33 @@ const OPTIONS = [
 // Returns, for each year 1..years, the cost if sold at the end of that year, plus a
 // breakdown at the final year.
 function simulate(p, kind, years) {
-  const keep = kind === "keep", used = kind === "uev", ev = kind === "ev" || used;
-  // Prices are entered before tax. New cars always pay 5% GST; a used EV only from a dealer.
-  const preTax = keep ? 0 : used ? p.uevPrice : ev ? p.evPrice : p.gasPrice;
-  const gst = used && p.uevSeller !== 0 ? 0 : 0.05;
+  const keep = kind === "keep", uev = kind === "uev", ugas = kind === "ugas";
+  const used = uev || ugas, ev = kind === "ev" || uev;
+  // Prices are entered before tax. New cars always pay 5% GST; a used car only from a dealer.
+  const preTax = keep ? 0 : uev ? p.uevPrice : ugas ? p.ugasPrice : ev ? p.evPrice : p.gasPrice;
+  const privateSale = (uev && p.uevSeller !== 0) || (ugas && p.ugasSeller !== 0);
+  const gst = privateSale ? 0 : 0.05;
   const price = preTax * (1 + gst);
   // The dealer applies GST to the full price first, then takes the rebate off (new EVs only).
   const rebate = kind === "ev" ? Math.min(rebateOf(p), price) : 0;
   const net = price - rebate;
   const charger = ev && p.chargerOpt === 0 ? p.charger : 0;
   // Used EV: battery allowance starts once the 8-year battery warranty runs out.
-  const warrantyLeft = used ? Math.max(0, 8 - p.uevAge) : Infinity;
+  const warrantyLeft = uev ? Math.max(0, 8 - p.uevAge) : Infinity;
   // Keeping your car ties up what it could sell for today, so that counts as its starting cost.
   // (If you buy, it's sold to help pay, which is the same money, so it nets out.)
   const kept = keep ? p.keepValue : 0;
   // Resale starts from the pre-tax price: GST isn't part of what the car is worth. Used prices
   // track what a car effectively costs new, so the rebate lowers a new EV's resale too.
   const startValue = keep ? p.keepValue : Math.max(0, preTax - rebate);
-  const dep = (keep ? p.keepDep : used ? p.uevDep : ev ? p.depEv : p.depGas) / 100;
-  const ins0 = keep ? p.keepIns : used ? p.uevIns : ev ? p.insEv : p.insGas;
-  const maint0 = keep ? p.keepMaint : used ? p.uevMaint : ev ? p.maintEv : p.maintGas;
+  const dep = (keep ? p.keepDep : uev ? p.uevDep : ugas ? p.ugasDep : ev ? p.depEv : p.depGas) / 100;
+  const ins0 = keep ? p.keepIns : uev ? p.uevIns : ugas ? p.ugasIns : ev ? p.insEv : p.insGas;
+  const maint0 = keep ? p.keepMaint : uev ? p.uevMaint : ugas ? p.ugasMaint : ev ? p.maintEv : p.maintGas;
   const maintEsc = keep ? p.keepMaintGrowth : p.costEsc;
   const tax = ev ? p.evTax : 0;
 
   // Loan (none if you keep your car or pay cash)
-  const cash = keep || { gas: p.payGas, ev: p.payEv, uev: p.payUev }[kind] === 1;
+  const cash = keep || p[PAY[kind]] === 1;
   let bal = cash ? 0 : net * (1 - p.down / 100);
   const r = (used ? p.uevApr : p.apr) / 100 / 12, n = p.term;
   const pay = bal <= 0 ? 0 : r > 0 ? bal * r / (1 - Math.pow(1 + r, -n)) : bal / n;
@@ -682,7 +715,7 @@ function simulate(p, kind, years) {
   const upfront = kept + net - bal + charger;
   let fv = upfront, nominal = upfront;
   const b = { purchase: net, kept, charger, interest: 0, energy: 0, insurance: 0, maintenance: 0, battery: 0, tax: 0, resale: 0, growth: 0 };
-  const netCost = [];
+  const netCost = [], growth = [];
   let energyYear = 0, insYear = 0, maintYear = 0, battYear = 0;
 
   for (let m = 1; m <= years * 12; m++) {
@@ -695,7 +728,7 @@ function simulate(p, kind, years) {
         energyYear = (kwh * (1 - away) * (1 + p.chargeLoss / 100) * homeRate
                     + kwh * away * p.publicPrice) * Math.pow(1 + p.elecEsc / 100, y - 1);
       } else {
-        const litres = p.km / 100 * (keep ? p.keepEff : p.gasEff) * (1 + p.gasWinter / 100);
+        const litres = p.km / 100 * (keep ? p.keepEff : ugas ? p.ugasEff : p.gasEff) * (1 + p.gasWinter / 100);
         energyYear = litres * p.gasCents / 100 * Math.pow(1 + p.gasEsc / 100, y - 1);
       }
       // The value-linked share of the premium (collision/comprehensive) shrinks with the car's value.
@@ -719,9 +752,10 @@ function simulate(p, kind, years) {
       netCost.push(fv + bal - resale);
       b.resale = -resale;
       b.growth = fv - nominal;
+      growth.push(b.growth);
     }
   }
-  return { netCost, breakdown: b, total: netCost[years - 1] };
+  return { netCost, growth, breakdown: b, total: netCost[years - 1] };
 }
 
 function compute(p) {
@@ -737,7 +771,17 @@ function compute(p) {
     return (lo + hi) / 2;
   };
   const breaks = {};
-  for (const k of ["ev", "uev"]) breaks[k] = { keep: breakGas(k, "keep"), gas: breakGas(k, "gas") };
+  for (const k of ["ev", "uev"]) breaks[k] = { keep: breakGas(k, "keep"), gas: breakGas(k, "gas"), ugas: breakGas(k, "ugas") };
+  // Count investment growth relative to keeping your car: keeping shows $0, and every other option
+  // shows the extra growth it gives up. Every total shifts by the same amount, so the gaps between
+  // options (and the break-even prices above) don't change.
+  const base = res.keep.growth;
+  for (const k in res) {
+    const o = res[k];
+    o.netCost = o.netCost.map((v, i) => v - base[i]);
+    o.breakdown.growth -= base[base.length - 1];
+    o.total = o.netCost[o.netCost.length - 1];
+  }
   return { res, breaks };
 }
 
@@ -821,14 +865,14 @@ const ROWS = [
   ["kept", "Your current car's value today"], ["purchase", "Car price with any GST, after any rebate"], ["charger", "Home charger"],
   ["interest", "Loan interest"], ["energy", "Fuel or electricity"], ["insurance", "Insurance"],
   ["maintenance", "Maintenance and repairs"], ["battery", "Battery allowance (after warranty)"], ["tax", "Alberta EV tax"], ["resale", "Resale value at the end"],
-  ["growth", "Investment growth given up"],
+  ["growth", "Investment growth given up, vs keeping your car"],
 ];
 const lc = name => name[0].toLowerCase() + name.slice(1); // "Used EV" -> "used EV"
 const signed = v => (v > 0.5 ? "+" : v < -0.5 ? "−" : "") + $(Math.abs(v));
 const neg = v => (v < -0.5 ? "−" : "") + $(Math.abs(v));
 
 function gasPrice(bg) {
-  if (bg === 0) return "any price";
+  if (bg === 0) return "$0"; // the EV is cheaper even with free gas
   if (!isFinite(bg) || bg > 999) return "over $10/L";
   return `${bg.toFixed(0)}¢/L`;
 }
@@ -895,10 +939,11 @@ function update() {
       <div class="k"><span class="dot" style="background:${o.color}"></span>${o.name}</div>
       <div class="v num">${neg(t)}</div>
       <div class="s">${n === 1 ? "" : isBest ? "Cheapest · " : `+${$(gap)} vs cheapest · `}${(t / km * 100).toFixed(0)}¢/km</div>
-      ${bk ? `<div class="s">${[
-        !hidden.has("keep") && `Breaks even with keeping at ${gasPrice(bk.keep)}`,
-        !hidden.has("gas") && `with new gas at ${gasPrice(bk.gas)}`,
-      ].filter(Boolean).join(", ").replace(/^with/, "Breaks even with")}</div>` : ""}
+      ${bk && ["keep", "gas", "ugas"].some(on) ? `<div class="s" title="The gas price at which this EV would cost the same as each gas option">Break-even gas: ${[
+        on("keep") && `keep ${gasPrice(bk.keep)}`,
+        on("gas") && `new gas ${gasPrice(bk.gas)}`,
+        on("ugas") && `used gas ${gasPrice(bk.ugas)}`,
+      ].filter(Boolean).join(" · ")}</div>` : ""}
     </div>`;
   }).join("");
 
