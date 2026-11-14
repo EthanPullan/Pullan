@@ -97,7 +97,6 @@
   .hint.changed::before{content:"Default: " attr(data-default) " · ";color:var(--ink);}
   .hint.changed:empty::before{content:"Default: " attr(data-default);}
   .presets{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;}
-  .presets .pgroup{font-size:11px;font-weight:700;color:var(--muted);min-width:56px;}
   .presets button{font:inherit;font-size:11.5px;padding:3px 9px;border-radius:20px;border:1px solid var(--line);
     background:var(--panel-2);color:var(--ink);cursor:pointer;}
   .presets button:hover{border-color:var(--accent);}
@@ -205,9 +204,7 @@
     .valbox input{font-size:16px;width:96px;padding:6px 8px;}
     input[type=range]{height:32px;margin:4px 0 0;}
     .presets button{padding:7px 12px;font-size:12.5px;}
-    .presets{display:grid;grid-template-columns:1fr 1fr;}
-    .presets .pgroup{grid-column:1 / -1;}
-    .presets button{white-space:nowrap;padding:7px 4px;}
+    .presets button{white-space:nowrap;}
     .seg button{padding:10px 14px;font-size:13.5px;}
     .btn{padding:9px 12px;}
     details.group > summary{padding:16px 18px;}
@@ -427,14 +424,14 @@
 /* ---------- Gas price history (StatCan 18-10-0001-01, mean of Calgary & Edmonton, ¢/L) ---------- */
 // Self-serve regular and premium unleaded. Windows end Sep 2026 (5-yr: Oct 2021 – Sep 2026).
 const GAS_PRESETS = [
-  { group: "Regular", label: "5-yr avg", value: 143.4 },
-  { group: "Regular", label: "10-yr avg", value: 124.6 },
-  { group: "Regular", label: "2025 avg", value: 131.9 },
-  { group: "Regular", label: "Sep 2026", value: 164.9 },
-  { group: "Premium", label: "5-yr avg", value: 167.8 },
-  { group: "Premium", label: "10-yr avg", value: 146.8 },
-  { group: "Premium", label: "2025 avg", value: 157.5 },
-  { group: "Premium", label: "Sep 2026", value: 191.5 },
+  { label: "5-yr avg", value: 143.4 },
+  { label: "10-yr avg", value: 124.6 },
+  { label: "2025 avg", value: 131.9 },
+  { label: "Sep 2026", value: 164.9 },
+  { label: "Premium 5-yr avg", value: 167.8 },
+  { label: "Premium 10-yr avg", value: 146.8 },
+  { label: "Premium 2025 avg", value: 157.5 },
+  { label: "Premium Sep 2026", value: 191.5 },
 ];
 
 /* ---------- Control definitions ----------
@@ -650,9 +647,8 @@ function makeCtl(it, g) {
     </div>
     <input type="range" id="r_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}">
     <div class="hint" id="h_${it.id}" data-default="${fmtVal(it, it.def)}">${it.hint || ""}</div>
-    ${it.presets ? [...new Set(it.presets.map(p => p.group))].map(grp =>
-      `<div class="presets"><span class="pgroup">${grp}</span>${it.presets.filter(p => p.group === grp).map(p =>
-        `<button type="button" data-for="${it.id}" data-v="${p.value}" aria-label="${grp} ${p.label}, ${p.value} cents a litre">${p.label} · ${p.value}¢</button>`).join("")}</div>`).join("") : ""}${extras}`;
+    ${it.presets ? `<div class="presets">${it.presets.map(p =>
+      `<button type="button" data-for="${it.id}" data-v="${p.value}" aria-label="${p.label}, ${p.value} cents a litre">${p.label} · ${p.value}¢</button>`).join("")}</div>` : ""}${extras}`;
   return el;
 }
 for (const g of GROUPS) {
