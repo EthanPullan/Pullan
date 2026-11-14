@@ -96,7 +96,8 @@
   .hint{font-size:12px;color:var(--muted);line-height:1.5;}
   .hint.changed::before{content:"Default: " attr(data-default) " · ";color:var(--ink);}
   .hint.changed:empty::before{content:"Default: " attr(data-default);}
-  .presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .presets{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;}
+  .presets .pgroup{font-size:11px;font-weight:700;color:var(--muted);min-width:56px;}
   .presets button{font:inherit;font-size:11.5px;padding:3px 9px;border-radius:20px;border:1px solid var(--line);
     background:var(--panel-2);color:var(--ink);cursor:pointer;}
   .presets button:hover{border-color:var(--accent);}
@@ -204,6 +205,9 @@
     .valbox input{font-size:16px;width:96px;padding:6px 8px;}
     input[type=range]{height:32px;margin:4px 0 0;}
     .presets button{padding:7px 12px;font-size:12.5px;}
+    .presets{display:grid;grid-template-columns:1fr 1fr;}
+    .presets .pgroup{grid-column:1 / -1;}
+    .presets button{white-space:nowrap;padding:7px 4px;}
     .seg button{padding:10px 14px;font-size:13.5px;}
     .btn{padding:9px 12px;}
     details.group > summary{padding:16px 18px;}
@@ -218,6 +222,15 @@
     .table-panel{padding:16px 12px;}
     .table-panel table{font-size:11.5px;} .table-panel th,.table-panel td{padding:6px 2px;}
     .verdict .big{font-size:28px;}
+  }
+  /* Phones: five totals in the bottom bar need every pixel. */
+  @media (max-width:430px){
+    .mbar{padding-left:8px;padding-right:8px;}
+    .mbar .mrow{gap:4px;}
+    .mbar .mc{padding:5px 4px;}
+    .mbar .mc .n{font-size:10px;}
+    .mbar .mc .n i{display:none;}
+    .mbar .mc .t{font-size:13px;}
   }
 </style>
 </head>
@@ -298,6 +311,8 @@
       <li>Statistics Canada Table 18-10-0001-01, monthly regular self-serve price, average of Calgary and Edmonton
         (data to September 2026). Annual averages: 2021 126¢, 2022 155¢, 2023 136¢, 2024 145¢, 2025 132¢.
         The default is the 5-year average (Oct 2021 – Sep 2026), 143.4¢/L.</li>
+      <li>Premium unleaded (same table and cities): 5-year average 167.8¢/L, 10-year 146.8¢/L, 2025 157.5¢/L and
+        September 2026 191.5¢/L, about 24¢/L above regular on average. Only use premium if your car requires it.</li>
       <li class="muted">Caveat: April 2021 – March 2025 prices include the federal consumer carbon levy
         (up to 17.6¢/L), which has since been removed, while 2022–23 prices were lowered by Alberta's fuel-tax
         relief. Historical averages are a starting point, not a forecast. 2026 has run well above them.</li>
@@ -410,11 +425,16 @@
 
 <script>
 /* ---------- Gas price history (StatCan 18-10-0001-01, mean of Calgary & Edmonton, ¢/L) ---------- */
+// Self-serve regular and premium unleaded. Windows end Sep 2026 (5-yr: Oct 2021 – Sep 2026).
 const GAS_PRESETS = [
-  { label: "5-yr avg", value: 143.4 },
-  { label: "10-yr avg", value: 124.6 },
-  { label: "2025 avg", value: 131.9 },
-  { label: "Sep 2026", value: 164.9 },
+  { group: "Regular", label: "5-yr avg", value: 143.4 },
+  { group: "Regular", label: "10-yr avg", value: 124.6 },
+  { group: "Regular", label: "2025 avg", value: 131.9 },
+  { group: "Regular", label: "Sep 2026", value: 164.9 },
+  { group: "Premium", label: "5-yr avg", value: 167.8 },
+  { group: "Premium", label: "10-yr avg", value: 146.8 },
+  { group: "Premium", label: "2025 avg", value: 157.5 },
+  { group: "Premium", label: "Sep 2026", value: 191.5 },
 ];
 
 /* ---------- Control definitions ----------
@@ -526,7 +546,7 @@ const GROUPS = [
   ]},
   { id: "gas", title: "Gas", users: ["keep", "gas", "ugas"], open: true, items: [
     { id: "gasCents", label: "Gas price today", min: 80, max: 220, step: 0.5, def: 143.4, fmt: "¢/L", presets: GAS_PRESETS,
-      hint: "Regular self-serve, Calgary and Edmonton average (StatCan)." },
+      hint: "Self-serve, Calgary and Edmonton average (StatCan). Premium has run about 24¢/L above regular, so use a premium figure if your car needs it. It applies to every gas car here." },
     { id: "gasEsc", adv: true, label: "Gas price change per year", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
       hint: "2% roughly tracks inflation." },
     { id: "gasWinter", adv: true, label: "Extra fuel used in cold weather", min: 0, max: 20, step: 1, def: 5, fmt: "%",
@@ -630,8 +650,9 @@ function makeCtl(it, g) {
     </div>
     <input type="range" id="r_${it.id}" min="${it.min}" max="${it.max}" step="${it.step}">
     <div class="hint" id="h_${it.id}" data-default="${fmtVal(it, it.def)}">${it.hint || ""}</div>
-    ${it.presets ? `<div class="presets">${it.presets.map(p =>
-      `<button type="button" data-for="${it.id}" data-v="${p.value}">${p.label} · ${p.value}¢</button>`).join("")}</div>` : ""}${extras}`;
+    ${it.presets ? [...new Set(it.presets.map(p => p.group))].map(grp =>
+      `<div class="presets"><span class="pgroup">${grp}</span>${it.presets.filter(p => p.group === grp).map(p =>
+        `<button type="button" data-for="${it.id}" data-v="${p.value}" aria-label="${grp} ${p.label}, ${p.value} cents a litre">${p.label} · ${p.value}¢</button>`).join("")}</div>`).join("") : ""}${extras}`;
   return el;
 }
 for (const g of GROUPS) {
