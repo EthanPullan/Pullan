@@ -309,7 +309,8 @@
         (data to September 2026). Annual averages: 2021 126¢, 2022 155¢, 2023 136¢, 2024 145¢, 2025 132¢.
         The default is the 5-year average (Oct 2021 – Sep 2026), 143.4¢/L.</li>
       <li>Premium unleaded (same table and cities): 5-year average 167.8¢/L, 10-year 146.8¢/L, 2025 157.5¢/L and
-        September 2026 191.5¢/L, about 24¢/L above regular on average. Only use premium if your car requires it.</li>
+        September 2026 191.5¢/L, about 24¢/L above regular on average. Each gas car has its own Regular/Premium
+        choice. Break-even gas prices are given as the regular price, with premium kept the same amount above it.</li>
       <li class="muted">Caveat: April 2021 – March 2025 prices include the federal consumer carbon levy
         (up to 17.6¢/L), which has since been removed, while 2022–23 prices were lowered by Alberta's fuel-tax
         relief. Historical averages are a starting point, not a forecast. 2026 has run well above them.</li>
@@ -428,10 +429,12 @@ const GAS_PRESETS = [
   { label: "10-yr avg", value: 124.6 },
   { label: "2025 avg", value: 131.9 },
   { label: "Sep 2026", value: 164.9 },
-  { label: "Premium 5-yr avg", value: 167.8 },
-  { label: "Premium 10-yr avg", value: 146.8 },
-  { label: "Premium 2025 avg", value: 157.5 },
-  { label: "Premium Sep 2026", value: 191.5 },
+];
+const PREMIUM_PRESETS = [
+  { label: "5-yr avg", value: 167.8 },
+  { label: "10-yr avg", value: 146.8 },
+  { label: "2025 avg", value: 157.5 },
+  { label: "Sep 2026", value: 191.5 },
 ];
 
 /* ---------- Control definitions ----------
@@ -444,6 +447,10 @@ const rebateOf = p => REBATES[p.rebateOpt];
 const worth = (start, dep, p) =>
   `Worth about ${$(start * Math.pow(1 - dep / 100, p.years))} after ${p.years} year${p.years > 1 ? "s" : ""}.`;
 const PAY = { gas: "payGas", ugas: "payUgas", ev: "payEv", uev: "payUev" };
+// Which fuel each gas car takes (0 regular, 1 premium).
+const FUEL = { keep: "keepFuel", gas: "gasFuel", ugas: "ugasFuel" };
+const usesPremium = (p, on) => Object.keys(FUEL).some(k => on(k) && p[FUEL[k]] === 1);
+const fuelChoice = (id, hint) => ({ id, label: "Fuel", choices: ["Regular", "Premium"], def: 0, hint });
 const onLoan = (p, on, keys) => keys.some(k => on(k) && p[PAY[k]] === 0);
 
 const GROUPS = [
@@ -458,6 +465,7 @@ const GROUPS = [
       hint: "Check a trade-in or private-sale estimate. Keeping the car means not having this money." },
     { id: "keepEff", label: "Fuel use", min: 4, max: 18, step: 0.1, def: 9.5, fmt: "L/100km",
       hint: "Look up its combined rating in NRCan's Fuel Consumption Guide. Older cars often use a little more than rated." },
+    fuelChoice("keepFuel", "Check the owner's manual or fuel door: premium only if the car requires it."),
     { id: "keepIns", label: "Insurance", min: 500, max: 6000, step: 50, def: 1900, fmt: "$/yr",
       hint: "Placeholder, so use your actual bill. Older cars are often cheaper to insure, especially without collision cover." },
     { id: "keepMaint", label: "Maintenance and repairs, this year", min: 0, max: 6000, step: 50, def: 1500, fmt: "$/yr",
@@ -477,6 +485,7 @@ const GROUPS = [
       note: p => `With GST you pay ${$(p.gasPrice * 1.05)}.` },
     { id: "gasEff", label: "Fuel use", min: 4, max: 16, step: 0.1, def: 8.5, fmt: "L/100km",
       hint: "Use the combined rating from NRCan's Fuel Consumption Guide. A compact SUV is about 8–9." },
+    fuelChoice("gasFuel", "Most cars take regular. Some turbocharged and luxury models require premium."),
     { id: "insGas", label: "Insurance", min: 800, max: 6000, step: 50, def: 2344, fmt: "$/yr",
       hint: "Alberta average gas-car quote, 2025 (Surex). A real quote is far better." },
     { id: "maintGas", label: "Maintenance", min: 0, max: 3000, step: 50, def: 1000, fmt: "$/yr",
@@ -495,6 +504,7 @@ const GROUPS = [
         : `No GST on a private sale, so you pay ${$(p.ugasPrice)}.` },
     { id: "ugasEff", label: "Fuel use", min: 4, max: 18, step: 0.1, def: 8.8, fmt: "L/100km",
       hint: "Look up its combined rating in NRCan's Fuel Consumption Guide." },
+    fuelChoice("ugasFuel", "Most cars take regular. Some turbocharged and luxury models require premium."),
     { id: "ugasIns", label: "Insurance", min: 500, max: 6000, step: 50, def: 2150, fmt: "$/yr",
       hint: "Estimate: a bit below the new gas car, since it's worth less. Get a quote." },
     { id: "ugasMaint", label: "Maintenance and repairs", min: 0, max: 4000, step: 50, def: 1300, fmt: "$/yr",
@@ -542,10 +552,14 @@ const GROUPS = [
       note: p => worth(p.uevPrice, p.uevDep, p) },
   ]},
   { id: "gas", title: "Gas", users: ["keep", "gas", "ugas"], open: true, items: [
-    { id: "gasCents", label: "Gas price today", min: 80, max: 220, step: 0.5, def: 143.4, fmt: "¢/L", presets: GAS_PRESETS,
-      hint: "Self-serve, Calgary and Edmonton average (StatCan). Premium has run about 24¢/L above regular, so use a premium figure if your car needs it. It applies to every gas car here." },
+    { id: "gasCents", label: "Regular gas price today", min: 80, max: 220, step: 0.5, def: 143.4, fmt: "¢/L", presets: GAS_PRESETS,
+      hint: "Self-serve, Calgary and Edmonton average (StatCan)." },
+    { id: "premiumCents", label: "Premium gas price today", min: 90, max: 250, step: 0.5, def: 167.8, fmt: "¢/L", presets: PREMIUM_PRESETS,
+      show: usesPremium,
+      hint: "For cars set to premium. Same source; premium has run about 24¢/L above regular.",
+      note: p => `${(p.premiumCents - p.gasCents).toFixed(1)}¢/L more than regular.` },
     { id: "gasEsc", adv: true, label: "Gas price change per year", min: -3, max: 8, step: 0.5, def: 2, fmt: "%/yr",
-      hint: "2% roughly tracks inflation." },
+      hint: "2% roughly tracks inflation. Applies to regular and premium." },
     { id: "gasWinter", adv: true, label: "Extra fuel used in cold weather", min: 0, max: 20, step: 1, def: 5, fmt: "%",
       hint: "Averaged over the whole year. Gas cars use more fuel in winter (warm-up, idling), though less than EVs." },
   ]},
@@ -778,7 +792,8 @@ function simulate(p, kind, years) {
                     + kwh * away * p.publicPrice) * Math.pow(1 + p.elecEsc / 100, y - 1);
       } else {
         const litres = p.km / 100 * (keep ? p.keepEff : ugas ? p.ugasEff : p.gasEff) * (1 + p.gasWinter / 100);
-        energyYear = litres * p.gasCents / 100 * Math.pow(1 + p.gasEsc / 100, y - 1);
+        const cents = p[FUEL[kind]] === 1 ? p.premiumCents : p.gasCents;
+        energyYear = litres * cents / 100 * Math.pow(1 + p.gasEsc / 100, y - 1);
       }
       // The value-linked share of the premium (collision/comprehensive) shrinks with the car's value.
       const share = p.insValueShare / 100;
@@ -812,7 +827,9 @@ function compute(p) {
   for (const o of OPTIONS) res[o.key] = simulate(p, o.key, p.years);
   // Gas price at which an EV costs the same as a gas option (that option's cost rises with gas price).
   const breakGas = (evKey, other) => {
-    const diffAt = c => simulate({ ...p, gasCents: c }, other, p.years).total - res[evKey].total;
+    // Break-even is stated as a regular price; premium moves with it, keeping today's gap.
+    const gap = p.premiumCents - p.gasCents;
+    const diffAt = c => simulate({ ...p, gasCents: c, premiumCents: c + gap }, other, p.years).total - res[evKey].total;
     if (diffAt(0) >= 0) return 0;
     if (diffAt(1000) < 0) return Infinity;
     let lo = 0, hi = 1000;
@@ -1013,7 +1030,8 @@ function update() {
   document.getElementById("breakeven").innerHTML =
     !evOpts.length ? "Switch on an EV to see the gas price at which it would break even." :
     !gasOpts.length ? "Switch on a gas option to see the gas price at which each EV would break even." :
-    "<b>Gas price where each EV breaks even</b>" + evOpts.map(k => {
+    `<b>${usesPremium(p, on) ? "Regular gas price" : "Gas price"} where each EV breaks even</b>${usesPremium(p, on)
+      ? ` (premium stays ${(p.premiumCents - p.gasCents).toFixed(1)}¢ above it)` : ""}` + evOpts.map(k => {
       const o = OPTIONS.find(x => x.key === k);
       return `<div class="be"><i style="background:${o.color}"></i>${o.name}: ${gasOpts.map(([g, label]) =>
         `<span>${gasPrice(r.breaks[k][g])} vs ${label}</span>`).join(" · ")}</div>`;
